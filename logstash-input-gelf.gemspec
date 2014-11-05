@@ -22,7 +22,8 @@ Gem::Specification.new do |s|
   # Gem dependencies
   s.add_runtime_dependency 'logstash', '>= 1.4.0', '< 2.0.0'
 
-  s.add_runtime_dependency 'gelfd', ['0.2.0']
+  s.add_runtime_dependency "gelfd", ["0.2.0"]                 #(Apache 2.0 license)
+  s.add_runtime_dependency "gelf", ["1.3.2"]                  #(MIT license)
   s.add_runtime_dependency 'logstash-codec-plain'
 
 end
