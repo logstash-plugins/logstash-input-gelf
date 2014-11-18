@@ -1,5 +1,5 @@
 
-require "spec_helper"
+require "logstash/devutils/rspec/spec_helper"
 require "gelf"
 describe "inputs/gelf" do
   
