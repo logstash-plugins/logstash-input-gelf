@@ -14,7 +14,6 @@ require "socket"
 #
 class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   config_name "gelf"
-  milestone 2
 
   default :codec, "plain"
 
