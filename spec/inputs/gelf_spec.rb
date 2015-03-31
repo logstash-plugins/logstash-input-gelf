@@ -1,16 +1,16 @@
-
 require "logstash/devutils/rspec/spec_helper"
+require "logstash/inputs/gelf"
 require "gelf"
-describe "inputs/gelf" do
-  
 
-  describe "reads chunked gelf messages " do
+describe "inputs/gelf" do
+
+  it "reads chunked gelf messages " do
     port = 12209
     host = "127.0.0.1"
     chunksize = 1420
-    gelfclient = GELF::Notifier.new(host,port,chunksize)
+    gelfclient = GELF::Notifier.new(host, port, chunksize)
 
-    config <<-CONFIG
+    conf = <<-CONFIG
       input {
         gelf {
           port => "#{port}"
@@ -19,34 +19,37 @@ describe "inputs/gelf" do
       }
     CONFIG
 
-    input do |pipeline, queue|
-      Thread.new { pipeline.run }
-      sleep 0.1 while !pipeline.ready?
+    large_random = 2000.times.map{32 + rand(126 - 32)}.join("")
 
-      # generate random characters (message is zipped!) from printable ascii ( SPACE till ~ )
-      # to trigger gelf chunking
-      s = StringIO.new
-      for i in 1..2000
-        s << 32 + rand(126-32)
+    messages = [
+      "hello",
+      "world",
+      large_random,
+      "we survived gelf!"
+    ]
+
+    events = input(conf) do |pipeline, queue|
+      # send a first message until plugin is up and receives it
+      while queue.size <= 0
+        gelfclient.notify!("short_message" => "prime")
+        sleep(0.1)
       end
-      large_random = s.string
+      gelfclient.notify!("short_message" => "start")
 
-      [ "hello",
-        "world",
-        large_random,
-        "we survived gelf!"
-      ].each do |m|
-  	    gelfclient.notify!( "short_message" => m )
-        # poll at most 10 times
-        waits = 0
-        while waits < 10 and queue.size == 0
-          sleep 0.1
-          waits += 1
-        end
-        insist { queue.size } > 0
-        insist { queue.pop["message"] } == m
+      e = queue.pop
+      while (e["message"] != "start")
+        e = queue.pop
       end
 
+      messages.each do |m|
+  	    gelfclient.notify!("short_message" => m)
+      end
+
+      messages.map{queue.pop}
+    end
+
+    events.each_with_index do |e, i|
+      insist { e["message"] } == messages[i]
     end
   end
 end

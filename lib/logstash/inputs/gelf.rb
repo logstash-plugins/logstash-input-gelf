@@ -46,12 +46,13 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def initialize(params)
     super
     BasicSocket.do_not_reverse_lookup = true
+    @shutdown_requested = false
+    @udp = nil
   end # def initialize
 
   public
   def register
     require 'gelfd'
-    @udp = nil
   end # def register
 
   public
@@ -59,12 +60,27 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     begin
       # udp server
       udp_listener(output_queue)
+    rescue LogStash::ShutdownSignal
+      @shutdown_requested = true
     rescue => e
-      @logger.warn("gelf listener died", :exception => e, :backtrace => e.backtrace)
-      sleep(5)
-      retry
+      unless @shutdown_requested
+        @logger.warn("gelf listener died", :exception => e, :backtrace => e.backtrace)
+        sleep(5)
+        retry
+      end
     end # begin
   end # def run
+
+  public
+  def teardown
+    @shutdown_requested = true
+    if @udp
+      @udp.close_read rescue nil
+      @udp.close_write rescue nil
+      @udp = nil
+    end
+    finished
+  end
 
   private
   def udp_listener(output_queue)
@@ -78,7 +94,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     @udp = UDPSocket.new(Socket::AF_INET)
     @udp.bind(@host, @port)
 
-    while true
+    while !@shutdown_requested
       line, client = @udp.recvfrom(8192)
       begin
         data = Gelfd::Parser.parse(line)
@@ -91,6 +107,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       next if data.nil?
 
       event = LogStash::Event.new(LogStash::Json.load(data))
+
       event["source_host"] = client[3]
       if event["timestamp"].is_a?(Numeric)
         event.timestamp = LogStash::Timestamp.at(event["timestamp"])
@@ -99,14 +116,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       remap_gelf(event) if @remap
       strip_leading_underscore(event) if @strip_leading_underscore
       decorate(event)
+
       output_queue << event
-    end
-  rescue LogStash::ShutdownSignal
-    # Do nothing, shutdown.
-  ensure
-    if @udp
-      @udp.close_read rescue nil
-      @udp.close_write rescue nil
     end
   end # def udp_listener
 
