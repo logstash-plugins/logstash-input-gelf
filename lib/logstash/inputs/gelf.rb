@@ -111,7 +111,6 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       event["source_host"] = client[3]
       if event["timestamp"].is_a?(Numeric)
         event.timestamp = LogStash::Timestamp.at(event["timestamp"])
-        event.remove("timestamp")
       end
       remap_gelf(event) if @remap
       strip_leading_underscore(event) if @strip_leading_underscore
