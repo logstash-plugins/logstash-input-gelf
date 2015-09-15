@@ -122,13 +122,13 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   private
   def remap_gelf(event)
-    if event["full_message"]
+    if event["full_message"] && !event["full_message"].empty?
       event["message"] = event["full_message"].dup
       event.remove("full_message")
       if event["short_message"] == event["message"]
         event.remove("short_message")
       end
-    elsif event["short_message"]
+    elsif event["short_message"]  && !event["short_message"].empty?
       event["message"] = event["short_message"].dup
       event.remove("short_message")
     end
