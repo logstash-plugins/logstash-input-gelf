@@ -1,8 +1,24 @@
+# encoding: utf-8
 require "logstash/devutils/rspec/spec_helper"
 require "logstash/inputs/gelf"
+require_relative "../support/helpers"
 require "gelf"
+require "flores/random"
 
-describe "inputs/gelf" do
+describe LogStash::Inputs::Gelf do
+  context "when interrupting the plugin" do
+    let(:port) { Flores::Random.integer(1024..65535) }
+    let(:host) { "127.0.0.1" }
+    let(:chunksize) { 1420 }
+    let(:producer) { InfiniteGelfProducer.new(host, port, chunksize) }
+    let(:config) {  { "host" => host, "port" => port } }
+
+    before { producer.run }
+    after { producer.stop }
+
+
+    it_behaves_like "an interruptible input plugin"
+  end
 
   it "reads chunked gelf messages " do
     port = 12209
