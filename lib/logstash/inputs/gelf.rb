@@ -129,7 +129,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     event = parse(json_gelf)
     return if event.nil?
 
-    event.set(SOURCE_HOST_FIELD, host)
+    event.set(SOURCE_HOST_FIELD, host.force_encoding("UTF-8"))
 
     if (gelf_timestamp = event.get(TIMESTAMP_GELF_FIELD)).is_a?(Numeric)
       event.timestamp = self.coerce_timestamp(gelf_timestamp)
