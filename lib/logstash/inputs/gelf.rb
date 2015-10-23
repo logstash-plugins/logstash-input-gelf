@@ -98,7 +98,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
       event = LogStash::Event.new(LogStash::Json.load(data))
 
-      event["source_host"] = client[3]
+      event["source_host"] = client[3].force_encoding("UTF-8")
       if event["timestamp"].is_a?(Numeric)
         event.timestamp = LogStash::Timestamp.at(event["timestamp"])
         event.remove("timestamp")
