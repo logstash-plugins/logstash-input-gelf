@@ -146,4 +146,21 @@ describe LogStash::Inputs::Gelf do
       expect(event.timestamp.usec).to be_within(1000).of(123456)
     end
   end
+
+  context "when an invalid JSON is fed to the listener" do
+    subject { LogStash::Inputs::Gelf.new_event(message, "host") }
+    let(:message) { "Invalid JSON message" }
+
+    it "generates a Logstash::Event" do
+      expect(subject).to be_a(LogStash::Event)
+    end
+
+    it "falls back to plain-text" do
+      expect(subject["message"]).to eq("Invalid JSON message")
+    end
+
+    it "tags message with _jsonparsefailure" do
+      expect(subject["tags"]).to include("_jsonparsefailure")
+    end
+  end
 end

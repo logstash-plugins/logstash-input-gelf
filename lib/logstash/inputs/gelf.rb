@@ -121,7 +121,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   # @param host [String] source host of GELF data
   # @return [LogStash::Event] new event with parsed json gelf, assigned source host and coerced timestamp
   def self.new_event(json_gelf, host)
-    event = LogStash::Event.new(LogStash::Json.load(json_gelf))
+    event = parse(json_gelf)
 
     event[SOURCE_HOST_FIELD] = host
 
@@ -141,6 +141,15 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     # bug in JRuby prevents correcly parsing a BigDecimal fractional part, see https://github.com/elastic/logstash/issues/4565
     timestamp.is_a?(BigDecimal) ? LogStash::Timestamp.at(timestamp.to_i, timestamp.frac * 1000000) : LogStash::Timestamp.at(timestamp)
   end
+
+  private
+  def self.parse(json)
+    o = LogStash::Json.load(json)
+    LogStash::Event.new(o) if o
+  rescue LogStash::Json::ParserError => e
+    logger.warn("JSON parse failure. Falling back to plain-text", :error => e, :data => json)
+    LogStash::Event.new("message" => json, "tags" => ["_jsonparsefailure"])
+  end # def parse
 
   private
   def remap_gelf(event)
