@@ -108,7 +108,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
       event["source_host"] = client[3]
       if event["timestamp"].is_a?(Numeric)
-        event.timestamp = LogStash::Timestamp.at(event["timestamp"])
+        # Creates a new Time object with the value given by time, the given number of seconds and microseconds_with_frac since the Epoch.
+        event.timestamp = LogStash::Timestamp.at(event["timestamp"].to_i, ((event["timestamp"] % 1) * 1000000).to_i)
         event.remove("timestamp")
       end
 
