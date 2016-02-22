@@ -16,7 +16,6 @@ describe LogStash::Inputs::Gelf do
     before { producer.run }
     after { producer.stop }
 
-
     it_behaves_like "an interruptible input plugin"
   end
 
