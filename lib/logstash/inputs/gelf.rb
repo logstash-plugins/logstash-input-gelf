@@ -33,6 +33,13 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   # ports) may require root to use.
   config :port, :validate => :number, :default => 12201
 
+  # The GELF protocol (TCP or UDP).
+  config :protocol, :validate => :string, :default => "UDP"
+
+  # Whether to capture the hostname or numeric address of the incoming connection
+  # Defaults to hostname
+  config :use_numeric_client_addr, :validate => :boolean, :default => false
+
   # Whether or not to remap the GELF message fields to Logstash event fields or
   # leave them intact.
   #
@@ -57,6 +64,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def initialize(params)
     super
     BasicSocket.do_not_reverse_lookup = true
+    @tcp = nil
+    @udp = nil
   end # def initialize
 
   public
@@ -67,8 +76,12 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   public
   def run(output_queue)
     begin
-      # udp server
-      udp_listener(output_queue)
+      # udp/tcp server
+      if @protocol.downcase == "tcp"
+        tcp_listener(output_queue)
+      else
+        udp_listener(output_queue)
+      end
     rescue => e
       unless stop?
         @logger.warn("gelf listener died", :exception => e, :backtrace => e.backtrace)
@@ -80,20 +93,91 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   public
   def stop
-    @udp.close
+    if @protocol.downcase == "tcp"
+      @tcp.close
+    else
+      @udp.close
+    end
   rescue IOError # the plugin is currently shutting down, so its safe to ignore theses errors
   end
 
   private
+  def tcp_listener(output_queue)
+    @logger.info("Starting gelf listener (tcp) ...", :address => "#{@host}:#{@port}")
+
+    if @tcp.nil?
+      @tcp = TCPServer.new(@host, @port)
+    end
+
+    while !stop?
+      Thread.new(@tcp.accept) do |client|
+        @logger.debug? && @logger.debug("Gelf (tcp): Accepting connection from:  #{client.peeraddr[2]}:#{client.peeraddr[1]}")
+
+        begin
+          while !client.nil? && !client.eof?
+
+            begin # Read from socket
+              @data_in = client.gets("\u0000")
+            rescue => ex
+              @logger.warn("Gelf (tcp): failed gets from client socket:", :exception => ex, :backtrace => ex.backtrace)
+            end
+
+             if @data_in.nil?
+              @logger.warn("Gelf (tcp): socket read succeeded, but data is nil.  Skipping.")
+              next
+            end
+
+            # data received.  Remove trailing \0
+            @data_in[-1] == "\u0000" && @data_in = @data_in[0...-1]
+            begin # Parse JSON
+              @jsonObj = JSON.parse(@data_in)
+            rescue => ex
+              @logger.warn("Gelf (tcp): failed to parse a message. Skipping: " + @data_in, :exception => ex, :backtrace => ex.backtrace)
+              next
+            end
+
+            begin  # Create event
+              event = LogStash::Event.new(@jsonObj)
+              event.remove("source_host")
+              event["source_host"] = @use_numeric_client_addr && client.addr(:numeric)[3] || client.addr(:hostname)[3]
+              if event["timestamp"].is_a?(Numeric)
+                event.timestamp = LogStash::Timestamp.at(event["timestamp"])
+                event.remove("timestamp")
+              end
+              remap_gelf(event) if @remap
+              strip_leading_underscore(event) if @strip_leading_underscore
+              decorate(event)
+              output_queue << event
+            rescue => ex
+              @logger.warn("Gelf (tcp): failed to create event from json object. Skipping: " + @jsonObj.to_s, :exception => ex, :backtrace => ex.backtrace)
+            end
+
+          end # while client
+          @logger.debug? && @logger.debug("Gelf (tcp): Closing client connection")
+          client.close
+          client = nil
+        rescue => ex
+          @logger.warn("Gelf (tcp): client socket failed.", :exception => ex, :backtrace => ex.backtrace)
+        ensure
+          if !client.nil?
+            @logger.debug? && @logger.debug("Gelf (tcp): Ensuring client is closed")
+            client.close
+            client = nil
+          end
+        end # begin client
+      end  # Thread.new
+    end # @!stop?
+  end # def tcp_listener
+
+  private
   def udp_listener(output_queue)
-    @logger.info("Starting gelf listener", :address => "#{@host}:#{@port}")
+    @logger.info("Starting gelf listener (udp)", :address => "#{@host}:#{@port}")
 
     @udp = UDPSocket.new(Socket::AF_INET)
     @udp.bind(@host, @port)
 
     while !stop?
       line, client = @udp.recvfrom(8192)
-
       begin
         data = Gelfd::Parser.parse(line)
       rescue => ex
@@ -111,7 +195,6 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
         event.timestamp = LogStash::Timestamp.at(event["timestamp"])
         event.remove("timestamp")
       end
-
       remap_gelf(event) if @remap
       strip_leading_underscore(event) if @strip_leading_underscore
       decorate(event)
@@ -143,4 +226,5 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
        event.remove(key)
      end
   end # deef removing_leading_underscores
+
 end # class LogStash::Inputs::Gelf
