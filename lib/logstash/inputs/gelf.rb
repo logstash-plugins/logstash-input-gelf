@@ -110,6 +110,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       if event["timestamp"].is_a?(Numeric)
         # Bundled JRuby with Logstash packages cannot handle fractional
         # parts in a BigDecimal correctly as single argument for ::Time.at()
+        # Workaround: feed it integer & fractional part separately
         if event["timestamp"].is_a?(BigDecimal)
           event.timestamp = LogStash::Timestamp.at(event["timestamp"].to_i(),event["timestamp"].frac() * 1000000)
         else
