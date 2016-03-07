@@ -108,7 +108,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
       event["source_host"] = client[3]
       if event["timestamp"].is_a?(Numeric)
-        event.timestamp = LogStash::Timestamp.at(event["timestamp"])
+        event.timestamp = LogStash::Timestamp.at(event["timestamp"].to_f)
         event.remove("timestamp")
       end
 
