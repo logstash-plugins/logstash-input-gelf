@@ -52,6 +52,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   config :strip_leading_underscore, :validate => :boolean, :default => true
 
   RECONNECT_BACKOFF_SLEEP = 5
+  TIMESTAMP_GELF_FIELD = "timestamp".freeze
+  SOURCE_HOST_FIELD = "source_host".freeze
 
   public
   def initialize(params)
@@ -104,20 +106,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       # Gelfd parser outputs null if it received and cached a non-final chunk
       next if data.nil?
 
-      event = LogStash::Event.new(LogStash::Json.load(data))
-
-      event["source_host"] = client[3]
-      if event["timestamp"].is_a?(Numeric)
-        # Bundled JRuby with Logstash packages cannot handle fractional
-        # parts in a BigDecimal correctly as single argument for ::Time.at()
-        # Workaround: feed it integer & fractional part separately
-        if event["timestamp"].is_a?(BigDecimal)
-          event.timestamp = LogStash::Timestamp.at(event["timestamp"].to_i(),event["timestamp"].frac() * 1000000)
-        else
-          event.timestamp = LogStash::Timestamp.at(event["timestamp"])
-        end
-        event.remove("timestamp")
-      end
+      event = self.class.new_event(data, client[3])
 
       remap_gelf(event) if @remap
       strip_leading_underscore(event) if @strip_leading_underscore
@@ -126,6 +115,32 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       output_queue << event
     end
   end # def udp_listener
+
+  # generate a new LogStash::Event from json input and assign host to source_host event field.
+  # @param json_gelf [String] GELF json data
+  # @param host [String] source host of GELF data
+  # @return [LogStash::Event] new event with parsed json gelf, assigned source host and coerced timestamp
+  def self.new_event(json_gelf, host)
+    event = LogStash::Event.new(LogStash::Json.load(json_gelf))
+
+    event[SOURCE_HOST_FIELD] = host
+
+    if (gelf_timestamp = event[TIMESTAMP_GELF_FIELD]).is_a?(Numeric)
+      event.timestamp = self.coerce_timestamp(gelf_timestamp)
+      event.remove(TIMESTAMP_GELF_FIELD)
+    end
+
+    event
+  end
+
+  # transform a given timestamp value into a proper LogStash::Timestamp, preserving microsecond precision
+  # and work around a JRuby issue with Time.at loosing fractional part with BigDecimal.
+  # @param timestamp [Numeric] a Numeric (integer, float or bigdecimal) timestampo representation
+  # @return [LogStash::Timestamp] the proper LogStash::Timestamp representation
+  def self.coerce_timestamp(timestamp)
+    # bug in JRuby prevents correcly parsing a BigDecimal fractional part, see https://github.com/elastic/logstash/issues/4565
+    timestamp.is_a?(BigDecimal) ? LogStash::Timestamp.at(timestamp.to_i, timestamp.frac * 1000000) : LogStash::Timestamp.at(timestamp)
+  end
 
   private
   def remap_gelf(event)
