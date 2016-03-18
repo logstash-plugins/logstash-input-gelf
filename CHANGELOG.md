@@ -1,3 +1,5 @@
+# 2.0.4
+  - New dependency requirements for logstash-core for the 5.0 release
 ## 2.0.3
  - Fix Timestamp coercion to preserve upto microsecond precision, https://github.com/logstash-plugins/logstash-input-gelf/pull/35
 
