@@ -151,16 +151,36 @@ describe LogStash::Inputs::Gelf do
     subject { LogStash::Inputs::Gelf.new_event(message, "host") }
     let(:message) { "Invalid JSON message" }
 
-    it "generates a Logstash::Event" do
-      expect(subject).to be_a(LogStash::Event)
+    context "legacy JSON parser output" do
+      before(:each) do
+        class << LogStash::Inputs::Gelf; alias_method(:parse, :legacy_parse); end
+      end
+
+      it { should be_a(LogStash::Event) }
+
+      it "falls back to plain-text" do
+        expect(subject["message"]).to eq("Invalid JSON message")
+      end
+
+      it "tags message with _jsonparsefailure" do
+        expect(subject["tags"]).to include("_jsonparsefailure")
+      end
     end
 
-    it "falls back to plain-text" do
-      expect(subject["message"]).to eq("Invalid JSON message")
-    end
+    context "new :from_json parser output" do
+      before(:each) do
+        class << LogStash::Inputs::Gelf; alias_method(:parse, :from_json_parse); end
+      end
 
-    it "tags message with _jsonparsefailure" do
-      expect(subject["tags"]).to include("_jsonparsefailure")
+      it { should be_a(LogStash::Event) }
+
+      it "falls back to plain-text" do
+        expect(subject["message"]).to eq("Invalid JSON message")
+      end
+
+      it "tags message with _jsonparsefailure" do
+        expect(subject["tags"]).to include("_jsonparsefailure")
+      end
     end
   end
 end

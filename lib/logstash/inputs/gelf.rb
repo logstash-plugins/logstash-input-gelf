@@ -142,14 +142,26 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     timestamp.is_a?(BigDecimal) ? LogStash::Timestamp.at(timestamp.to_i, timestamp.frac * 1000000) : LogStash::Timestamp.at(timestamp)
   end
 
-  private
-  def self.parse(json)
+  # from_json_parse uses the Event#from_json method to deserialize and directly produce events
+  def self.from_json_parse(json)
+    LogStash::Event.from_json(json).each { |event| event }
+  rescue LogStash::Json::ParserError
+    LogStash::Event.new("message" => json, "tags" => ["_jsonparsefailure"])
+  end # def self.from_json_parse
+
+  # legacy_parse uses the LogStash::Json class to deserialize json
+  def self.legacy_parse(json)
     o = LogStash::Json.load(json)
     LogStash::Event.new(o) if o
-  rescue LogStash::Json::ParserError => e
-    logger.warn("JSON parse failure. Falling back to plain-text", :error => e, :data => json)
+  rescue LogStash::Json::ParserError
     LogStash::Event.new("message" => json, "tags" => ["_jsonparsefailure"])
-  end # def parse
+  end # def self.parse
+
+  # keep compatibility with all v2.x distributions. only in 2.3 will the Event#from_json method be introduced
+  # and we need to keep compatibility for all v2 releases.
+  class << self
+    alias_method :parse, LogStash::Event.respond_to?(:from_json) ? :from_json_parse : :legacy_parse
+  end
 
   private
   def remap_gelf(event)
