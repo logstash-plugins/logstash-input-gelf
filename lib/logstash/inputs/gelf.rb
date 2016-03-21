@@ -54,6 +54,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   RECONNECT_BACKOFF_SLEEP = 5
   TIMESTAMP_GELF_FIELD = "timestamp".freeze
   SOURCE_HOST_FIELD = "source_host".freeze
+  MESSAGE_FIELD = "message"
+  TAGS_FIELD = "tags"
+  PARSE_FAILURE_TAG = "_jsonparsefailure"
 
   public
   def initialize(params)
@@ -146,7 +149,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def self.from_json_parse(json)
     LogStash::Event.from_json(json).each { |event| event }
   rescue LogStash::Json::ParserError
-    LogStash::Event.new("message" => json, "tags" => ["_jsonparsefailure"])
+    LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG])
   end # def self.from_json_parse
 
   # legacy_parse uses the LogStash::Json class to deserialize json
@@ -154,7 +157,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     o = LogStash::Json.load(json)
     LogStash::Event.new(o) if o
   rescue LogStash::Json::ParserError
-    LogStash::Event.new("message" => json, "tags" => ["_jsonparsefailure"])
+    LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG])
   end # def self.parse
 
   # keep compatibility with all v2.x distributions. only in 2.3 will the Event#from_json method be introduced
