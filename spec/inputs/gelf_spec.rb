@@ -167,6 +167,10 @@ describe LogStash::Inputs::Gelf do
       it "tags message with _jsonparsefailure" do
         expect(subject["tags"]).to include("_jsonparsefailure")
       end
+
+      it "tags message with _legacyjsonparser" do
+        expect(subject["tags"]).to include("_legacyjsonparser")
+      end
     end
 
     context "default :from_json parser output" do
@@ -178,6 +182,10 @@ describe LogStash::Inputs::Gelf do
 
       it "tags message with _jsonparsefailure" do
         expect(subject["tags"]).to include("_jsonparsefailure")
+      end
+
+      it "tags message with _fromjsonparser" do
+        expect(subject["tags"]).to include("_fromjsonparser")
       end
     end
   end

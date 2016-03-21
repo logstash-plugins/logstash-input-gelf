@@ -150,7 +150,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     LogStash::Event.from_json(json).each { |event| event }
   rescue LogStash::Json::ParserError => e
     logger.error("JSON parse failure. Falling back to plain-text", :error => e, :data => json)
-    LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG])
+    LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG, '_fromjsonparser'])
   end # def self.from_json_parse
 
   # legacy_parse uses the LogStash::Json class to deserialize json
@@ -159,7 +159,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     LogStash::Event.new(o) if o
   rescue LogStash::Json::ParserError => e
     logger.error("JSON parse failure. Falling back to plain-text", :error => e, :data => json)
-    LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG])
+    LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG, '_legacyjsonparser'])
   end # def self.parse
 
   # keep compatibility with all v2.x distributions. only in 2.3 will the Event#from_json method be introduced
