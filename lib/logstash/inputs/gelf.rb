@@ -148,7 +148,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   # from_json_parse uses the Event#from_json method to deserialize and directly produce events
   def self.from_json_parse(json)
     LogStash::Event.from_json(json).each { |event| event }
-  rescue LogStash::Json::ParserError
+  rescue LogStash::Json::ParserError => e
+    logger.error("JSON parse failure. Falling back to plain-text", :error => e, :data => json)
     LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG])
   end # def self.from_json_parse
 
@@ -156,7 +157,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def self.legacy_parse(json)
     o = LogStash::Json.load(json)
     LogStash::Event.new(o) if o
-  rescue LogStash::Json::ParserError
+  rescue LogStash::Json::ParserError => e
+    logger.error("JSON parse failure. Falling back to plain-text", :error => e, :data => json)
     LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG])
   end # def self.parse
 
