@@ -57,6 +57,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   MESSAGE_FIELD = "message"
   TAGS_FIELD = "tags"
   PARSE_FAILURE_TAG = "_jsonparsefailure"
+  PARSE_FAILURE_LOG_MESSAGE = "JSON parse failure. Falling back to plain-text"
 
   public
   def initialize(params)
@@ -149,7 +150,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def self.from_json_parse(json)
     LogStash::Event.from_json(json).each { |event| event }
   rescue LogStash::Json::ParserError => e
-    logger.error("JSON parse failure. Falling back to plain-text", :error => e, :data => json)
+    logger.error(PARSE_FAILURE_LOG_MESSAGE, :error => e, :data => json)
     LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG, '_fromjsonparser'])
   end # def self.from_json_parse
 
@@ -158,7 +159,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     o = LogStash::Json.load(json)
     LogStash::Event.new(o) if o
   rescue LogStash::Json::ParserError => e
-    logger.error("JSON parse failure. Falling back to plain-text", :error => e, :data => json)
+    logger.error(PARSE_FAILURE_LOG_MESSAGE, :error => e, :data => json)
     LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG, '_legacyjsonparser'])
   end # def self.parse
 
