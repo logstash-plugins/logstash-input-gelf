@@ -153,13 +153,15 @@ describe LogStash::Inputs::Gelf do
 
     context "legacy JSON parser output" do
       before(:each) do
-        class << LogStash::Inputs::Gelf; alias_method(:parse, :legacy_parse); end
+        expect(LogStash::Inputs::Gelf).to receive(:parse) do |line|
+          LogStash::Inputs::Gelf.send(:legacy_parse, line)
+        end
       end
 
       it { should be_a(LogStash::Event) }
 
       it "falls back to plain-text" do
-        expect(subject["message"]).to eq("Invalid JSON message")
+        expect(subject["message"]).to eq(message)
       end
 
       it "tags message with _jsonparsefailure" do
@@ -167,15 +169,11 @@ describe LogStash::Inputs::Gelf do
       end
     end
 
-    context "new :from_json parser output" do
-      before(:each) do
-        class << LogStash::Inputs::Gelf; alias_method(:parse, :from_json_parse); end
-      end
-
+    context "default :from_json parser output" do
       it { should be_a(LogStash::Event) }
 
       it "falls back to plain-text" do
-        expect(subject["message"]).to eq("Invalid JSON message")
+        expect(subject["message"]).to eq(message)
       end
 
       it "tags message with _jsonparsefailure" do
