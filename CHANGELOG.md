@@ -1,3 +1,6 @@
+# 2.0.6
+  - Fix plugin crash when Logstash::Json fails to parse a message, https://github.com/logstash-plugins/logstash-input-gelf/pull/27
+
 # 2.0.5
   - Depend on logstash-core-plugin-api instead of logstash-core, removing the need to mass update plugins on major releases of logstash
 # 2.0.4
