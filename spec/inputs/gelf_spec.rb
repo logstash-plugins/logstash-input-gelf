@@ -150,42 +150,37 @@ describe LogStash::Inputs::Gelf do
   context "when an invalid JSON is fed to the listener" do
     subject { LogStash::Inputs::Gelf.new_event(message, "host") }
     let(:message) { "Invalid JSON message" }
+    if LogStash::Event.respond_to?(:from_java)
+      context "default :from_json parser output" do
+        it { should be_a(LogStash::Event) }
 
-    context "legacy JSON parser output" do
-      before(:each) do
-        expect(LogStash::Inputs::Gelf).to receive(:parse) do |line|
-          LogStash::Inputs::Gelf.send(:legacy_parse, line)
+        it "falls back to plain-text" do
+          expect(subject["message"]).to eq(message)
+        end
+
+        it "tags message with _jsonparsefailure" do
+          expect(subject["tags"]).to include("_jsonparsefailure")
+        end
+
+        it "tags message with _fromjsonparser" do
+          expect(subject["tags"]).to include("_fromjsonparser")
         end
       end
+    else
+      context "legacy JSON parser output" do
+        it { should be_a(LogStash::Event) }
 
-      it { should be_a(LogStash::Event) }
+        it "falls back to plain-text" do
+          expect(subject["message"]).to eq(message)
+        end
 
-      it "falls back to plain-text" do
-        expect(subject["message"]).to eq(message)
-      end
+        it "tags message with _jsonparsefailure" do
+          expect(subject["tags"]).to include("_jsonparsefailure")
+        end
 
-      it "tags message with _jsonparsefailure" do
-        expect(subject["tags"]).to include("_jsonparsefailure")
-      end
-
-      it "tags message with _legacyjsonparser" do
-        expect(subject["tags"]).to include("_legacyjsonparser")
-      end
-    end
-
-    context "default :from_json parser output" do
-      it { should be_a(LogStash::Event) }
-
-      it "falls back to plain-text" do
-        expect(subject["message"]).to eq(message)
-      end
-
-      it "tags message with _jsonparsefailure" do
-        expect(subject["tags"]).to include("_jsonparsefailure")
-      end
-
-      it "tags message with _fromjsonparser" do
-        expect(subject["tags"]).to include("_fromjsonparser")
+        it "tags message with _legacyjsonparser" do
+          expect(subject["tags"]).to include("_legacyjsonparser")
+        end
       end
     end
   end

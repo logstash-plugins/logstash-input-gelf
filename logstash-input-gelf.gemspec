@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
 
   s.name            = 'logstash-input-gelf'
-  s.version         = '2.0.6'
+  s.version         = '2.0.7'
   s.licenses        = ['Apache License (2.0)']
   s.summary         = "This input will read GELF messages as events over the network, making it a good choice if you already use Graylog2 today."
   s.description     = "This gem is a logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/plugin install gemname. This gem is not a stand-alone program"
@@ -30,4 +30,3 @@ Gem::Specification.new do |s|
   s.add_development_dependency "gelf", ["1.3.2"]                  #(MIT license)
   s.add_development_dependency "flores"
 end
-
