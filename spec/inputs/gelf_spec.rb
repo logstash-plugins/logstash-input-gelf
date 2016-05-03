@@ -53,7 +53,7 @@ describe LogStash::Inputs::Gelf do
       gelfclient.notify!("short_message" => "start")
 
       e = queue.pop
-      while (e["message"] != "start")
+      while (e.get("message") != "start")
         e = queue.pop
       end
 
@@ -65,8 +65,8 @@ describe LogStash::Inputs::Gelf do
     end
 
     events.each_with_index do |e, i|
-      insist { e["message"] } == messages[i]
-      insist { e["host"] } == Socket.gethostname
+      insist { e.get("message") } == messages[i]
+      insist { e.get("host") } == Socket.gethostname
     end
   end
 
@@ -156,15 +156,15 @@ describe LogStash::Inputs::Gelf do
         it { should be_a(LogStash::Event) }
 
         it "falls back to plain-text" do
-          expect(subject["message"]).to eq(message)
+          expect(subject.get("message")).to eq(message)
         end
 
         it "tags message with _jsonparsefailure" do
-          expect(subject["tags"]).to include("_jsonparsefailure")
+          expect(subject.get("tags")).to include("_jsonparsefailure")
         end
 
         it "tags message with _fromjsonparser" do
-          expect(subject["tags"]).to include("_fromjsonparser")
+          expect(subject.get("tags")).to include("_fromjsonparser")
         end
       end
     else
@@ -172,15 +172,15 @@ describe LogStash::Inputs::Gelf do
         it { should be_a(LogStash::Event) }
 
         it "falls back to plain-text" do
-          expect(subject["message"]).to eq(message)
+          expect(subject.get("message")).to eq(message)
         end
 
         it "tags message with _jsonparsefailure" do
-          expect(subject["tags"]).to include("_jsonparsefailure")
+          expect(subject.get("tags")).to include("_jsonparsefailure")
         end
 
         it "tags message with _legacyjsonparser" do
-          expect(subject["tags"]).to include("_legacyjsonparser")
+          expect(subject.get("tags")).to include("_legacyjsonparser")
         end
       end
     end

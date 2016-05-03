@@ -129,9 +129,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     event = parse(json_gelf)
     return if event.nil?
 
-    event[SOURCE_HOST_FIELD] = host
+    event.set(SOURCE_HOST_FIELD, host)
 
-    if (gelf_timestamp = event[TIMESTAMP_GELF_FIELD]).is_a?(Numeric)
+    if (gelf_timestamp = event.get(TIMESTAMP_GELF_FIELD)).is_a?(Numeric)
       event.timestamp = self.coerce_timestamp(gelf_timestamp)
       event.remove(TIMESTAMP_GELF_FIELD)
     end
@@ -175,14 +175,14 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   private
   def remap_gelf(event)
-    if event["full_message"] && !event["full_message"].empty?
-      event["message"] = event["full_message"].dup
+    if event.get("full_message") && !event.get("full_message").empty?
+      event.set("message", event.get("full_message").dup)
       event.remove("full_message")
-      if event["short_message"] == event["message"]
+      if event.get("short_message") == event.get("message")
         event.remove("short_message")
       end
-    elsif event["short_message"]  && !event["short_message"].empty?
-      event["message"] = event["short_message"].dup
+    elsif event.get("short_message") && !event.get("short_message").empty?
+      event.set("message", event.get("short_message").dup)
       event.remove("short_message")
     end
   end # def remap_gelf
@@ -192,7 +192,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
      # Map all '_foo' fields to simply 'foo'
      event.to_hash.keys.each do |key|
        next unless key[0,1] == "_"
-       event[key[1..-1]] = event[key]
+       event.set(key[1..-1], event.get(key))
        event.remove(key)
      end
   end # deef removing_leading_underscores
