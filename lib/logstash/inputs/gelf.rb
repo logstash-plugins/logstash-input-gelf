@@ -111,6 +111,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       next if data.nil?
 
       event = self.class.new_event(data, client[3])
+      next if event.nil?
 
       remap_gelf(event) if @remap
       strip_leading_underscore(event) if @strip_leading_underscore
@@ -126,6 +127,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   # @return [LogStash::Event] new event with parsed json gelf, assigned source host and coerced timestamp
   def self.new_event(json_gelf, host)
     event = parse(json_gelf)
+    return if event.nil?
 
     event[SOURCE_HOST_FIELD] = host
 
@@ -148,7 +150,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   # from_json_parse uses the Event#from_json method to deserialize and directly produce events
   def self.from_json_parse(json)
-    LogStash::Event.from_json(json).each { |event| event }
+    # from_json will always return an array of item.
+    # in the context of gelf, the payload should be an array of 1
+    LogStash::Event.from_json(json).first
   rescue LogStash::Json::ParserError => e
     logger.error(PARSE_FAILURE_LOG_MESSAGE, :error => e, :data => json)
     LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG, '_fromjsonparser'])
@@ -157,7 +161,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   # legacy_parse uses the LogStash::Json class to deserialize json
   def self.legacy_parse(json)
     o = LogStash::Json.load(json)
-    LogStash::Event.new(o) if o
+    LogStash::Event.new(o)
   rescue LogStash::Json::ParserError => e
     logger.error(PARSE_FAILURE_LOG_MESSAGE, :error => e, :data => json)
     LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG, '_legacyjsonparser'])

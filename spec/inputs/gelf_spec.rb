@@ -150,7 +150,8 @@ describe LogStash::Inputs::Gelf do
   context "when an invalid JSON is fed to the listener" do
     subject { LogStash::Inputs::Gelf.new_event(message, "host") }
     let(:message) { "Invalid JSON message" }
-    if LogStash::Event.respond_to?(:from_java)
+
+    if LogStash::Event.respond_to?(:from_json)
       context "default :from_json parser output" do
         it { should be_a(LogStash::Event) }
 
