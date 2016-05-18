@@ -34,9 +34,11 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   config :port, :validate => :number, :default => 12201
 
   # The GELF protocol (TCP or UDP).
-  config :protocol, :validate => :string, :default => "UDP"
+  config :protocol, :validate => [ "UDP", "udp", "TCP", "tcp" ], :default => "UDP"
 
   # Whether to capture the hostname or numeric address of the incoming connection
+  # in protocol tcp.
+  #
   # Defaults to hostname
   config :use_numeric_client_addr, :validate => :boolean, :default => false
 
@@ -59,13 +61,17 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   config :strip_leading_underscore, :validate => :boolean, :default => true
 
   RECONNECT_BACKOFF_SLEEP = 5
+  TIMESTAMP_GELF_FIELD = "timestamp".freeze
+  SOURCE_HOST_FIELD = "source_host".freeze
+  MESSAGE_FIELD = "message"
+  TAGS_FIELD = "tags"
+  PARSE_FAILURE_TAG = "_jsonparsefailure"
+  PARSE_FAILURE_LOG_MESSAGE = "JSON parse failure. Falling back to plain-text"
 
   public
   def initialize(params)
     super
     BasicSocket.do_not_reverse_lookup = true
-    @tcp = nil
-    @udp = nil
   end # def initialize
 
   public
@@ -109,7 +115,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       @tcp = TCPServer.new(@host, @port)
     end
 
-    while !stop?
+    while !@shutdown_requested
       Thread.new(@tcp.accept) do |client|
         @logger.debug? && @logger.debug("Gelf (tcp): Accepting connection from:  #{client.peeraddr[2]}:#{client.peeraddr[1]}")
 
@@ -129,27 +135,22 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
             # data received.  Remove trailing \0
             @data_in[-1] == "\u0000" && @data_in = @data_in[0...-1]
-            begin # Parse JSON
-              @jsonObj = JSON.parse(@data_in)
+            source_host = @use_numeric_client_address && client.addr(:numeric)[3] || client.addr(:hostname)[3]
+            begin # Parse JSON to event
+              event = self.class.new_event(@data_in, source_host)
             rescue => ex
               @logger.warn("Gelf (tcp): failed to parse a message. Skipping: " + @data_in, :exception => ex, :backtrace => ex.backtrace)
               next
             end
 
             begin  # Create event
-              event = LogStash::Event.new(@jsonObj)
               event.remove("source_host")
-              event["source_host"] = @use_numeric_client_addr && client.addr(:numeric)[3] || client.addr(:hostname)[3]
-              if event["timestamp"].is_a?(Numeric)
-                event.timestamp = LogStash::Timestamp.at(event["timestamp"])
-                event.remove("timestamp")
-              end
               remap_gelf(event) if @remap
               strip_leading_underscore(event) if @strip_leading_underscore
               decorate(event)
               output_queue << event
             rescue => ex
-              @logger.warn("Gelf (tcp): failed to create event from json object. Skipping: " + @jsonObj.to_s, :exception => ex, :backtrace => ex.backtrace)
+              @logger.warn("Gelf (tcp): failed to create event from json object. Skipping: " + event, :exception => ex, :backtrace => ex.backtrace)
             end
 
           end # while client
@@ -166,7 +167,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
           end
         end # begin client
       end  # Thread.new
-    end # @!stop?
+    end # @shutdown_requested
   end # def tcp_listener
 
   private
@@ -178,6 +179,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
     while !stop?
       line, client = @udp.recvfrom(8192)
+
       begin
         data = Gelfd::Parser.parse(line)
       rescue => ex
@@ -188,13 +190,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       # Gelfd parser outputs null if it received and cached a non-final chunk
       next if data.nil?
 
-      event = LogStash::Event.new(LogStash::Json.load(data))
+      event = self.class.new_event(data, client[3])
 
-      event["source_host"] = client[3]
-      if event["timestamp"].is_a?(Numeric)
-        event.timestamp = LogStash::Timestamp.at(event["timestamp"])
-        event.remove("timestamp")
-      end
       remap_gelf(event) if @remap
       strip_leading_underscore(event) if @strip_leading_underscore
       decorate(event)
@@ -202,6 +199,55 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       output_queue << event
     end
   end # def udp_listener
+
+  # generate a new LogStash::Event from json input and assign host to source_host event field.
+  # @param json_gelf [String] GELF json data
+  # @param host [String] source host of GELF data
+  # @return [LogStash::Event] new event with parsed json gelf, assigned source host and coerced timestamp
+  def self.new_event(json_gelf, host)
+    event = parse(json_gelf)
+
+    event[SOURCE_HOST_FIELD] = host
+
+    if (gelf_timestamp = event[TIMESTAMP_GELF_FIELD]).is_a?(Numeric)
+      event.timestamp = self.coerce_timestamp(gelf_timestamp)
+      event.remove(TIMESTAMP_GELF_FIELD)
+    end
+
+    event
+  end
+
+  # transform a given timestamp value into a proper LogStash::Timestamp, preserving microsecond precision
+  # and work around a JRuby issue with Time.at loosing fractional part with BigDecimal.
+  # @param timestamp [Numeric] a Numeric (integer, float or bigdecimal) timestampo representation
+  # @return [LogStash::Timestamp] the proper LogStash::Timestamp representation
+  def self.coerce_timestamp(timestamp)
+    # bug in JRuby prevents correcly parsing a BigDecimal fractional part, see https://github.com/elastic/logstash/issues/4565
+    timestamp.is_a?(BigDecimal) ? LogStash::Timestamp.at(timestamp.to_i, timestamp.frac * 1000000) : LogStash::Timestamp.at(timestamp)
+  end
+
+  # from_json_parse uses the Event#from_json method to deserialize and directly produce events
+  def self.from_json_parse(json)
+    LogStash::Event.from_json(json).each { |event| event }
+  rescue LogStash::Json::ParserError => e
+    logger.error(PARSE_FAILURE_LOG_MESSAGE, :error => e, :data => json)
+    LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG, '_fromjsonparser'])
+  end # def self.from_json_parse
+
+  # legacy_parse uses the LogStash::Json class to deserialize json
+  def self.legacy_parse(json)
+    o = LogStash::Json.load(json)
+    LogStash::Event.new(o) if o
+  rescue LogStash::Json::ParserError => e
+    logger.error(PARSE_FAILURE_LOG_MESSAGE, :error => e, :data => json)
+    LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG, '_legacyjsonparser'])
+  end # def self.parse
+
+  # keep compatibility with all v2.x distributions. only in 2.3 will the Event#from_json method be introduced
+  # and we need to keep compatibility for all v2 releases.
+  class << self
+    alias_method :parse, LogStash::Event.respond_to?(:from_json) ? :from_json_parse : :legacy_parse
+  end
 
   private
   def remap_gelf(event)
@@ -226,5 +272,4 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
        event.remove(key)
      end
   end # deef removing_leading_underscores
-
 end # class LogStash::Inputs::Gelf
