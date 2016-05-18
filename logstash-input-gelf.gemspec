@@ -27,6 +27,6 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency "stud", "~> 0.0.22"
 
   s.add_development_dependency 'logstash-devutils'
-  s.add_development_dependency "gelf", ["1.3.2"]                  #(MIT license)
+  s.add_development_dependency "gelf", ["2.0.0"]                  #(MIT license)
   s.add_development_dependency "flores"
 end
