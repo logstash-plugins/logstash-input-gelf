@@ -34,7 +34,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   config :port, :validate => :number, :default => 12201
 
   # The GELF protocol (TCP or UDP).
-  config :protocol, :validate => [ "UDP", "udp", "TCP", "tcp" ], :default => "UDP"
+  config :protocol, :validate => [ "UDP", "TCP" ], :default => "UDP"
 
   # Whether to capture the hostname or numeric address of the incoming connection
   # in protocol tcp.
@@ -115,7 +115,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       @tcp = TCPServer.new(@host, @port)
     end
 
-    while !@shutdown_requested
+    while !stop?
       Thread.new(@tcp.accept) do |client|
         @logger.debug? && @logger.debug("Gelf (tcp): Accepting connection from:  #{client.peeraddr[2]}:#{client.peeraddr[1]}")
 

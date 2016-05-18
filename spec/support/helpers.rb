@@ -1,7 +1,7 @@
 # encoding: utf-8
 class InfiniteGelfProducer
-  def initialize(host, port, chunksize)
-    @client = GELF::Notifier.new(host, port, chunksize)
+  def initialize(host, port, chunksize, default_options)
+    @client = GELF::Notifier.new(host, port, chunksize, default_options)
   end
 
   def run
