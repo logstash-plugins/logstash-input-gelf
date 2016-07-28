@@ -129,9 +129,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     event = parse(json_gelf)
     return if event.nil?
 
-    event.set(SOURCE_HOST_FIELD, host)
+    event[SOURCE_HOST_FIELD] = host
 
-    if (gelf_timestamp = event.get(TIMESTAMP_GELF_FIELD)).is_a?(Numeric)
+    if (gelf_timestamp = event[TIMESTAMP_GELF_FIELD]).is_a?(Numeric)
       event.timestamp = self.coerce_timestamp(gelf_timestamp)
       event.remove(TIMESTAMP_GELF_FIELD)
     end
@@ -152,7 +152,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def self.from_json_parse(json)
     # from_json will always return an array of item.
     # in the context of gelf, the payload should be an array of 1
-    LogStash::Event.from_json(json).first
+    LogStash::Event.new(o)
   rescue LogStash::Json::ParserError => e
     logger.error(PARSE_FAILURE_LOG_MESSAGE, :error => e, :data => json)
     LogStash::Event.new(MESSAGE_FIELD => json, TAGS_FIELD => [PARSE_FAILURE_TAG, '_fromjsonparser'])
@@ -175,14 +175,14 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   private
   def remap_gelf(event)
-    if event.get("full_message") && !event.get("full_message").empty?
-      event.set("message", event.get("full_message").dup)
+    if event["full_message"] && !event["full_message"].empty?
+      event["message"] = event["full_message"].dup
       event.remove("full_message")
-      if event.get("short_message") == event.get("message")
+      if event["short_message"] == event["message"]
         event.remove("short_message")
       end
-    elsif event.get("short_message") && !event.get("short_message").empty?
-      event.set("message", event.get("short_message").dup)
+    elsif event["short_message"]  && !event["short_message"].empty?
+      event["message"] = event["short_message"].dup
       event.remove("short_message")
     end
   end # def remap_gelf
@@ -192,7 +192,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
      # Map all '_foo' fields to simply 'foo'
      event.to_hash.keys.each do |key|
        next unless key[0,1] == "_"
-       event.set(key[1..-1], event.get(key))
+       event[key[1..-1]] = event[key]
        event.remove(key)
      end
   end # deef removing_leading_underscores

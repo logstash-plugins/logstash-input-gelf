@@ -1,5 +1,5 @@
 ## 2.0.8
-  - Make the `Event.from_json` return a single element instead of an array and make this plugin works under 5.0
+  - Make the `Event.from_json` return a single element instead of an array.
 ## 2.0.7
   - Fix failing test caused by reverting Java Event back to Ruby Event
 ## 2.0.6
