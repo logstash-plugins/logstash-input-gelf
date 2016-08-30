@@ -161,6 +161,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   # legacy_parse uses the LogStash::Json class to deserialize json
   def self.legacy_parse(json)
     o = LogStash::Json.load(json)
+    return nil if o.nil?
     LogStash::Event.new(o)
   rescue LogStash::Json::ParserError => e
     logger.error(PARSE_FAILURE_LOG_MESSAGE, :error => e, :data => json)
