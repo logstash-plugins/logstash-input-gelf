@@ -51,6 +51,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   #
   config :strip_leading_underscore, :validate => :boolean, :default => true
 
+  # Whether or not to process dots in fields or leave them in place
+  config :nested_objects, :validate => :boolean, :default => false
+
   RECONNECT_BACKOFF_SLEEP = 5
   TIMESTAMP_GELF_FIELD = "timestamp".freeze
   SOURCE_HOST_FIELD = "source_host".freeze
@@ -115,6 +118,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
       remap_gelf(event) if @remap
       strip_leading_underscore(event) if @strip_leading_underscore
+      nested_objects(event) if @nested_objects
       decorate(event)
 
       output_queue << event
@@ -196,4 +200,69 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
        event.remove(key)
      end
   end # deef removing_leading_underscores
+
+  private
+  def nested_objects(event)
+    # process nested, create objects as needed, when key is 0, create an array. if object already exists and is an array push it.
+    base_target=event.to_hash
+    base_target.keys.each do |key|
+      next unless key.include? "."
+      value = event.get(key)
+      previous_key = nil
+      first_key=nil
+      target = base_target
+
+      key.split(".").each do |subKey|
+        if previous_key.nil?
+          first_key=subKey
+        else#skip first subKey
+          if !container_has_element?(target, previous_key)
+            if subKey =~ /^\d+$/
+              set_container_element(target, previous_key, Array.new)
+            else
+              set_container_element(target, previous_key, Hash.new)
+            end
+          end
+          target = get_container_element(target, previous_key)
+        end
+        previous_key = subKey
+      end
+      set_container_element(target, previous_key, value)
+      event.remove(key)
+      event.set(first_key, base_target[first_key])
+    end
+  end
+
+  private
+  def get_container_element(container, key)
+    if container.is_a?(Array)
+      container[Integer(key)]
+    elsif container.is_a?(Hash)
+      container[key]
+    else #Event
+      raise "not an array or hash"
+    end
+  end
+
+  private
+  def set_container_element(container, key, value)
+    if container.is_a?(Array)
+      container[Integer(key)] = value
+    elsif container.is_a?(Hash)
+      container[key] = value
+    else #Event
+      raise "not an array or hash"
+    end
+  end
+
+  private
+  def container_has_element?(container, key)
+    if container.is_a?(Array)
+      !container[Integer(key)].nil?
+    elsif container.is_a?(Hash)
+      container.key?(key)
+    else
+      raise "not an array or hash"
+    end
+  end
 end # class LogStash::Inputs::Gelf
