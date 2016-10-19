@@ -195,7 +195,6 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
        new_key = key[1..-1]
        # https://github.com/logstash-plugins/logstash-input-gelf/issues/25
        next if ['version', 'host', 'short_message', 'full_message', 'timestamp', 'level', 'facility', 'line', 'file'].include? new_key # GELF inner fields
-       next if ['type'].include? new_key # Logstash fields
        event.set(new_key, event.get(key))
        event.remove(key)
      end
