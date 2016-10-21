@@ -106,6 +106,7 @@ describe LogStash::Inputs::Gelf do
         "_foo.1" => "second",
         "_ca.0.titi" => "1",
         "_ca.1.titi" => "2",
+        "_empty." => "pouet",
       })
 
       queue.pop
@@ -116,6 +117,7 @@ describe LogStash::Inputs::Gelf do
     insist { result.get("foo") } == ["first", "second"]
     insist { result.get("ca")[0]["titi"] } == "1"
     insist { result.get("ca")[1]["titi"] } == "2"
+    insist { result.get("empty")[""]} == "pouet"
     insist { result.get("host") } == Socket.gethostname
   end
 
