@@ -110,8 +110,13 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       # Gelfd parser outputs null if it received and cached a non-final chunk
       next if data.nil?
 
-      event = self.class.new_event(data, client[3])
-      next if event.nil?
+      begin
+        event = self.class.new_event(data, client[3])
+        next if event.nil?
+      rescue => ex
+        @logger.warn("Could not create event", :exception => ex, :backtrace => ex.backtrace)
+        next
+      end
 
       begin
         remap_gelf(event) if @remap
