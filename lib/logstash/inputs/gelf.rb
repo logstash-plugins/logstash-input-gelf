@@ -103,7 +103,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       begin
         data = Gelfd::Parser.parse(line)
       rescue => ex
-        @logger.warn("Gelfd failed to parse a message skipping", :exception => ex, :backtrace => ex.backtrace)
+        @logger.warn("Gelfd failed to parse a message skipping", :exception => ex, :backtrace => ex.backtrace, :line => line)
         next
       end
 
@@ -114,7 +114,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
         event = self.class.new_event(data, client[3])
         next if event.nil?
       rescue => ex
-        @logger.warn("Could not create event", :exception => ex, :backtrace => ex.backtrace)
+        @logger.warn("Could not create event", :exception => ex, :backtrace => ex.backtrace, :data => data)
         next
       end
 
@@ -123,7 +123,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
         strip_leading_underscore(event) if @strip_leading_underscore
         decorate(event)
       rescue => ex
-        @logger.warn("Could not process event", :exception => ex, :backtrace => ex.backtrace)
+        @logger.warn("Could not process event", :exception => ex, :backtrace => ex.backtrace, :event => event)
         next
       end
 
