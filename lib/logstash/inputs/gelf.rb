@@ -204,17 +204,17 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   private
   def nested_objects(event)
     # process nested, create objects as needed, when key is 0, create an array. if object already exists and is an array push it.
-    base_target=event.to_hash
+    base_target = event.to_hash
     base_target.keys.each do |key|
       next unless key.include? "."
       value = event.get(key)
       previous_key = nil
-      first_key=nil
+      first_key = nil
       target = base_target
 
       key.split(".").each do |subKey|
         if previous_key.nil?
-          first_key=subKey
+          first_key = subKey
         else#skip first subKey
           if !container_has_element?(target, previous_key)
             if subKey =~ /^\d+$/
