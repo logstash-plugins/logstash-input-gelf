@@ -212,7 +212,12 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       first_key = nil
       target = base_target
 
-      key.split(".").each do |subKey|
+      keys = key.split(".")
+      if key =~ /\.$/
+        keys.push("");
+      end
+
+      keys.each do |subKey|
         if previous_key.nil?
           first_key = subKey
         else#skip first subKey
