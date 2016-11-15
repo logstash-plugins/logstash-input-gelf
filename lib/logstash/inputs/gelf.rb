@@ -223,16 +223,16 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
         else#skip first subKey
           if !container_has_element?(target, previous_key)
             if subKey =~ /^\d+$/
-              set_container_element(target, previous_key, Array.new)
+              target = set_container_element(target, previous_key, Array.new)
             else
-              set_container_element(target, previous_key, Hash.new)
+              target = set_container_element(target, previous_key, Hash.new)
             end
           end
           target = get_container_element(target, previous_key)
         end
         previous_key = subKey
       end
-      set_container_element(target, previous_key, value)
+      target = set_container_element(target, previous_key, value)
       event.remove(key)
       event.set(first_key, base_target[first_key])
     end
@@ -252,12 +252,21 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   private
   def set_container_element(container, key, value)
     if container.is_a?(Array)
-      container[Integer(key)] = value
+      if !/\A\d+\z/.match(key)
+        #key is not an integer, so we need to convert array to hash
+        container = Hash[container.map.with_index { |x, i| [i, x] }]
+        container[key] = value
+        return container
+      else
+        container[Integer(key)] = value
+      end
     elsif container.is_a?(Hash)
       container[key] = value
     else #Event
       raise "not an array or hash"
     end
+
+    return container
   end
 
   private
