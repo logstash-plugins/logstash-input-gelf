@@ -107,6 +107,9 @@ describe LogStash::Inputs::Gelf do
         "_ca.0.titi" => "1",
         "_ca.1.titi" => "2",
         "_empty." => "pouet",
+        "_not_an_array.0" => "bob",
+        "_not_an_array.1" => "alice",
+        "_not_an_array.length" => "carol",
       })
 
       queue.pop
@@ -118,6 +121,9 @@ describe LogStash::Inputs::Gelf do
     insist { result.get("ca")[0]["titi"] } == "1"
     insist { result.get("ca")[1]["titi"] } == "2"
     insist { result.get("empty")[""]} == "pouet"
+    insist { result.get("not_an_array")["0"]} == "bob"
+    insist { result.get("not_an_array")["1"]} == "alice"
+    insist { result.get("not_an_array")["length"]} == "carol"
     insist { result.get("host") } == Socket.gethostname
   end
 
