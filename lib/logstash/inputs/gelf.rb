@@ -272,7 +272,11 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   private
   def container_has_element?(container, key)
     if container.is_a?(Array)
-      !container[Integer(key)].nil?
+      if !/\A\d+\z/.match(key)
+        return false
+      else
+        !container[Integer(key)].nil?
+      end
     elsif container.is_a?(Hash)
       container.key?(key)
     else
