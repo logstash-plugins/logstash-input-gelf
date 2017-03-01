@@ -38,8 +38,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   #
   # Remapping converts the following GELF fields to Logstash equivalents:
   #
-  # * `full\_message` becomes `event["message"]`.
-  # * if there is no `full\_message`, `short\_message` becomes `event["message"]`.
+  # * `full\_message` becomes `event.get("message")`.
+  # * if there is no `full\_message`, `short\_message` becomes `event.get("message")`.
   config :remap, :validate => :boolean, :default => true
 
   # Whether or not to remove the leading `\_` in GELF fields or leave them
