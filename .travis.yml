@@ -1,4 +1,4 @@
----
+{
   "sudo": false,
   "language": "ruby",
   "cache": "bundler",
@@ -11,3 +11,4 @@
   "group": "stable",
   "dist": "precise",
   "os": "linux"
+}
