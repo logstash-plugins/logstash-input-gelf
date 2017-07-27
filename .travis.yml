@@ -2,12 +2,11 @@
   "sudo": false,
   "language": "ruby",
   "cache": "bundler",
+  "env": null,
   "rvm": "jruby-1.7.25",
-  "script": [
-    "bundle exec rspec spec"
-  ],
+  "install": true,
+  "script": "ci/build.sh",
   "jdk": "oraclejdk8",
-  "before_install": [],
   "group": "stable",
   "dist": "precise",
   "os": "linux"
