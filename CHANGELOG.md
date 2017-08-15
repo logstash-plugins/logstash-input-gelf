@@ -1,3 +1,6 @@
+## 3.0.6
+  - Fix some documentation issues
+
 ## 3.0.5
   - No user impact: bump development/testing dependency 'gelf' to v3.0.0
 
