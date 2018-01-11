@@ -95,7 +95,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
         udp_thr = Thread.new(output_queue) do |output_queue|
           udp_listener(output_queue)
         end
-	  end
+      end
     rescue => e
       unless stop?
         @logger.warn("gelf listener died", :exception => e, :backtrace => e.backtrace)
