@@ -103,8 +103,12 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
         retry unless stop?
       end
     end # begin
-    udp_thr.join
-    tcp_thr.join
+    if @use_tcp
+      tcp_thr.join
+    end
+    if @use_udp
+      udp_thr.join
+    end
   end # def run
 
   public
