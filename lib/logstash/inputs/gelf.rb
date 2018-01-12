@@ -64,7 +64,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   PARSE_FAILURE_LOG_MESSAGE = "JSON parse failure. Falling back to plain-text"
   
   # Whether or not to use TCP or/and UDP
-  config :use_tcp, :validate => :boolean, :default => true
+  config :use_tcp, :validate => :boolean, :default => false
   config :use_udp, :validate => :boolean, :default => true
 
   public
@@ -116,14 +116,14 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   public
   def stop
-    @udp.close
+    @udp.close && tcp.close
   rescue IOError # the plugin is currently shutting down, so its safe to ignore theses errors
   end
 
   private
   def tcp_listener(output_queue)
 
-    @logger.warn("Starting gelf listener (tcp) ...", :address => "#{@host}:#{@port_tcp}")
+    @logger.info("Starting gelf listener (tcp) ...", :address => "#{@host}:#{@port_tcp}")
 
     if @tcp.nil?
       @tcp = TCPServer.new(@host, @port_tcp)
@@ -197,7 +197,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     @udp = UDPSocket.new(Socket::AF_INET)
     @udp.bind(@host, @port_udp)
 
-    while !stop?
+    while !@udp.closed?
       line, client = @udp.recvfrom(8192)
 
       begin
