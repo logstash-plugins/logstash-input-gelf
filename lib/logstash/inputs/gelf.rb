@@ -129,28 +129,28 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
           while !client.nil? && !client.eof?
           
             begin # Read from socket
-              @data_in = client.gets("\u0000")
+              data_in = client.gets("\u0000")
             rescue => ex
               @logger.warn("Gelf (tcp): failed gets from client socket:", :exception => ex, :backtrace => ex.backtrace)
             end 
  
-             if @data_in.nil?
+             if data_in.nil?
               @logger.warn("Gelf (tcp): socket read succeeded, but data is nil.  Skipping.")
               next
             end
            
             # data received.  Remove trailing \0
-            @data_in[-1] == "\u0000" && @data_in = @data_in[0...-1]
+            data_in[-1] == "\u0000" && data_in = data_in[0...-1]
             begin # Parse JSON
-              @jsonObj = JSON.parse(@data_in)
-	      #@logger.warn("OK: " + @data_in)
+              jsonObj = JSON.parse(data_in)
+	      #@logger.warn("OK: " + data_in)
             rescue => ex
-              #@logger.warn("Gelf (tcp): failed to parse a message. Skipping: " + @data_in, :exception => ex, :backtrace => ex.backtrace)
+              #@logger.warn("Gelf (tcp): failed to parse a message. Skipping: " + data_in, :exception => ex, :backtrace => ex.backtrace)
               next
             end
            
             begin  # Create event
-              event = LogStash::Event.new(@jsonObj)
+              event = LogStash::Event.new(jsonObj)
               event.set(SOURCE_HOST_FIELD, host.force_encoding("UTF-8"))
               if event.get("timestamp").is_a?(Numeric)
                 #event["@timestamp"] = Time.at(event["timestamp"]).gmtime
@@ -162,7 +162,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
               decorate(event)
               output_queue << event
             rescue => ex
-              @logger.warn("Gelf (tcp): failed to create event from json object. Skipping: " + @jsonObj.to_s, :exception => ex, :backtrace => ex.backtrace)
+              @logger.warn("Gelf (tcp): failed to create event from json object. Skipping: " + jsonObj.to_s, :exception => ex, :backtrace => ex.backtrace)
             end 
 
           end # while client
