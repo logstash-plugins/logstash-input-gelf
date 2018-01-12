@@ -116,7 +116,14 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   public
   def stop
-    @udp.close && tcp.close
+    if @use_tcp && @use_udp
+      return @udp.close && tcp.close
+    elseif @use_tcp
+      return @tcp.close
+    elseif @use_udp
+      return @udp.close
+    end
+    return true
   rescue IOError # the plugin is currently shutting down, so its safe to ignore theses errors
   end
 
