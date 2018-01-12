@@ -145,7 +145,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
               jsonObj = JSON.parse(data_in)
 	      #@logger.warn("OK: " + data_in)
             rescue => ex
-              #@logger.warn("Gelf (tcp): failed to parse a message. Skipping: " + data_in, :exception => ex, :backtrace => ex.backtrace)
+              @logger.warn("Gelf (tcp): failed to parse a message. Skipping: " + data_in, :exception => ex, :backtrace => ex.backtrace)
               next
             end
            
@@ -153,7 +153,6 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
               event = LogStash::Event.new(jsonObj)
               event.set(SOURCE_HOST_FIELD, host.force_encoding("UTF-8"))
               if event.get("timestamp").is_a?(Numeric)
-                #event["@timestamp"] = Time.at(event["timestamp"]).gmtime
                 event.set("timestamp", LogStash::Timestamp.at(event.get("timestamp")))
                 event.remove("timestamp")
               end
