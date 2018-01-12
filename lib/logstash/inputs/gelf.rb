@@ -32,8 +32,10 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   # The ports to listen on. Remember that ports less than 1024 (privileged
   # ports) may require root to use.
-  config :port_tcp, :validate => :number, :default => 12201
-  config :port_udp, :validate => :number, :default => 12201
+  # port_tcp and port_udp can be used to have a different port for udp than the tcp port.
+  config :port, :validate => :number, :default => 12201
+  config :port_tcp, :validate => :number, :default => 0
+  config :port_udp, :validate => :number, :default => 0
 
   # Whether or not to remap the GELF message fields to Logstash event fields or
   # leave them intact.
@@ -82,11 +84,17 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def run(output_queue)
     begin
       if @use_tcp
+        if @port_tcp == 0
+          @port_tcp = @port
+        end
         tcp_thr = Thread.new(output_queue) do |output_queue|
           tcp_listener(output_queue)
         end
       end
       if @use_udp
+        if @port_udp == 0
+          @port_udp = @port
+        end
         udp_thr = Thread.new(output_queue) do |output_queue|
           udp_listener(output_queue)
         end
