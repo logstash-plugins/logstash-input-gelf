@@ -64,11 +64,6 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   # Whether or not to use TCP or/and UDP
   config :use_tcp, :validate => :boolean, :default => true
   config :use_udp, :validate => :boolean, :default => true
-  
-  
-  # Whether to capture the hostname or numeric address of the incoming connection
-  # Defaults to hostname
-  config :use_numeric_client_addr, :validate => :boolean, :default => false
 
   public
   def initialize(params)
@@ -156,13 +151,12 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
            
             begin  # Create event
               event = LogStash::Event.new(@jsonObj)
-              event.set("source_host", @use_numeric_client_addr && client.addr(:numeric) || client.addr(:hostname))
+              event.set(SOURCE_HOST_FIELD, host.force_encoding("UTF-8"))
               if event.get("timestamp").is_a?(Numeric)
                 #event["@timestamp"] = Time.at(event["timestamp"]).gmtime
                 event.set("timestamp", LogStash::Timestamp.at(event.get("timestamp")))
                 event.remove("timestamp")
               end
-              #event = self.class.new_event(data, @use_numeric_client_addr && client.addr(:numeric) || client.addr(:hostname))
               remap_gelf(event) if @remap
               strip_leading_underscore(event) if @strip_leading_underscore
               decorate(event)
