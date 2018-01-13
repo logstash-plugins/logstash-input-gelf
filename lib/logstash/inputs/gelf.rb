@@ -118,9 +118,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def stop
     if @use_tcp && @use_udp
       return @udp.close && tcp.close
-    elseif @use_tcp
+    elsif @use_tcp
       return @tcp.close
-    elseif @use_udp
+    elsif @use_udp
       return @udp.close
     end
     return true
