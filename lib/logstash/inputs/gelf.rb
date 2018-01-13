@@ -115,16 +115,10 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   end # def run
 
   public
-  def stop
-    if @use_tcp && @use_udp
-      return @udp.close && tcp.close
-    elsif @use_tcp
-      return @tcp.close
-    elsif @use_udp
-      return @udp.close
-    end
-    return true
-  rescue IOError # the plugin is currently shutting down, so its safe to ignore theses errors
+  def close
+    @udp.close if @use_udp
+    @tcp.close if @use_tcp
+  rescue IOError
   end
 
   private
@@ -204,7 +198,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     @udp = UDPSocket.new(Socket::AF_INET)
     @udp.bind(@host, @port_udp)
 
-    while !@udp.closed?
+    while !stop?
       line, client = @udp.recvfrom(8192)
 
       begin
