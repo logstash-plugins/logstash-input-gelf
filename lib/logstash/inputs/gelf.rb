@@ -115,7 +115,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   end # def run
 
   public
-  def close
+  def stop
     @udp.close if @use_udp
     @tcp.close if @use_tcp
   rescue IOError
