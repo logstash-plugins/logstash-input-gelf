@@ -76,15 +76,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   public
   def register
     require 'gelfd'
-    @tcp = nil
-    @udp = nil
-    if @port_tcp == nil
-      @port_tcp = @port
-    end
-    if @port_udp == nil
-      @port_udp = @port
-    end  
-  end # def register
+    @port_tcp ||= @port
+    @port_udp ||= @port
+  end
 
   public
   def run(output_queue)
@@ -116,9 +110,16 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   public
   def stop
-    @udp.close if @use_udp
-    @tcp.close if @use_tcp
-  rescue IOError
+    begin
+      @udp.close if @use_udp
+    rescue IOError => e
+      @logger.warn("Caugh exception while closing udp socket", :exception => e.inspect)
+    end
+    begin
+      @tcp.close if @use_tcp
+    rescue IOError => e
+      @logger.warn("Caugh exception while closing tcp socket", :exception => e.inspect)
+    end
   end
 
   private
@@ -136,7 +137,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
         begin
           while !client.nil? && !client.eof?
-          
+
             begin # Read from socket
               data_in = client.gets("\u0000")
             rescue => ex
@@ -199,7 +200,14 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     @udp.bind(@host, @port_udp)
 
     while !@udp.closed?
-      line, client = @udp.recvfrom(8192)
+      begin
+        line, client = @udp.recvfrom(8192)
+      rescue => e
+        if !stop? # if we're shutting down there's no point in logging anything
+          @logger.error("Caught exception while reading from UDP socket", :exception => e.inspect)
+        end
+        next
+      end
 
       begin
         data = Gelfd::Parser.parse(line)
