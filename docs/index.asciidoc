@@ -82,7 +82,6 @@ Whether to listen for gelf messages sent over udp
 
 Whether to listen for gelf messages sent over tcp
 
-
 [id="plugins-{type}s-{plugin}-port"]
 ===== `port` 
 
