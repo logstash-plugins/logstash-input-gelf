@@ -1,3 +1,6 @@
+## 3.1.0
+  - Add support for listening on TCP socket
+
 ## 3.0.7
   - Update gemspec summary
 
