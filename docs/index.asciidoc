@@ -80,7 +80,7 @@ Whether to listen for gelf messages sent over udp
   * Value type is <<boolean,boolean>>
   * Default value is `false`
 
-Wether to listen for gelf messages sent over tcp
+Whether to listen for gelf messages sent over tcp
 
 
 [id="plugins-{type}s-{plugin}-port"]
@@ -104,7 +104,7 @@ Tcp port to listen on. Use port instead of this setting unless you need a differ
 ===== `port_udp` 
 
   * Value type is <<number,number>>
-  * Default value is ``
+  * There is no default value for this setting.
 
 Udp port to listen on. Use port instead of this setting unless you need a different port for udp than tcp 
 
