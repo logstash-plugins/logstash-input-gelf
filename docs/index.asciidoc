@@ -72,7 +72,7 @@ The IP address or hostname to listen on.
   * Value type is <<boolean,boolean>>
   * Default value is `true`
 
-Wether to listen for gelf messages sent over udp
+Whether to listen for gelf messages sent over udp
 
 [id="plugins-{type}s-{plugin}-use_tcp"]
 ===== `use_tcp` 
@@ -96,7 +96,7 @@ port_tcp and port_udp can be used to set a specific port for each protocol.
 ===== `port_tcp` 
 
   * Value type is <<number,number>>
-  * Default value is ``
+  * There is no default value for this setting.
 
 Tcp port to listen on. Use port instead of this setting unless you need a different port for udp than tcp 
 
