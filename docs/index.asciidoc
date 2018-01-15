@@ -87,7 +87,7 @@ Wether to listen for gelf messages sent over tcp
 
 The port to listen on. Remember that ports less than 1024 (privileged
 ports) may require root to use.
-
+port_tcp and port_udp can be used to set a specific port for each protocol.
 [id="plugins-{type}s-{plugin}-port_tcp"]
 ===== `port_tcp` 
 
