@@ -62,7 +62,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   TAGS_FIELD = "tags"
   PARSE_FAILURE_TAG = "_jsonparsefailure"
   PARSE_FAILURE_LOG_MESSAGE = "JSON parse failure. Falling back to plain-text"
-  
+
   # Whether or not to use TCP or/and UDP
   config :use_tcp, :validate => :boolean, :default => false
   config :use_udp, :validate => :boolean, :default => true
@@ -76,15 +76,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   public
   def register
     require 'gelfd'
-    @tcp = nil
-    @udp = nil
-    if @port_tcp == nil
-      @port_tcp = @port
-    end
-    if @port_udp == nil
-      @port_udp = @port
-    end  
-  end # def register
+    @port_tcp ||= @port
+    @port_udp ||= @port
+  end
 
   public
   def run(output_queue)
@@ -116,9 +110,16 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
   public
   def stop
-    @udp.close if @use_udp
-    @tcp.close if @use_tcp
-  rescue IOError
+    begin
+      @udp.close if @use_udp
+    rescue IOError => e
+      @logger.warn("Caugh exception while closing udp socket", :exception => e.inspect)
+    end
+    begin
+      @tcp.close if @use_tcp
+    rescue IOError => e
+      @logger.warn("Caugh exception while closing tcp socket", :exception => e.inspect)
+    end
   end
 
   private
@@ -136,28 +137,27 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
         begin
           while !client.nil? && !client.eof?
-          
+
             begin # Read from socket
               data_in = client.gets("\u0000")
             rescue => ex
               @logger.warn("Gelf (tcp): failed gets from client socket:", :exception => ex, :backtrace => ex.backtrace)
-            end 
- 
+            end
+
              if data_in.nil?
               @logger.warn("Gelf (tcp): socket read succeeded, but data is nil.  Skipping.")
               next
             end
-           
+
             # data received.  Remove trailing \0
             data_in[-1] == "\u0000" && data_in = data_in[0...-1]
             begin # Parse JSON
               jsonObj = JSON.parse(data_in)
-	      #@logger.warn("OK: " + data_in)
             rescue => ex
               @logger.warn("Gelf (tcp): failed to parse a message. Skipping: " + data_in, :exception => ex, :backtrace => ex.backtrace)
               next
             end
-           
+
             begin  # Create event
               event = LogStash::Event.new(jsonObj)
               event.set(SOURCE_HOST_FIELD, host.force_encoding("UTF-8"))
@@ -171,7 +171,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
               output_queue << event
             rescue => ex
               @logger.warn("Gelf (tcp): failed to create event from json object. Skipping: " + jsonObj.to_s, :exception => ex, :backtrace => ex.backtrace)
-            end 
+            end
 
           end # while client
           @logger.debug? && @logger.debug("Gelf (tcp): Closing client connection")
@@ -180,7 +180,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
         rescue => ex
           @logger.warn("Gelf (tcp): client socket failed.", :exception => ex, :backtrace => ex.backtrace)
         ensure
-          if !client.nil? 
+          if !client.nil?
             @logger.debug? && @logger.debug("Gelf (tcp): Ensuring client is closed")
             client.close
             client = nil
@@ -188,7 +188,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
         end # begin client
       end  # Thread.new
     end # @shutdown_requested
-    
+
   end
 
   private
@@ -199,7 +199,14 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     @udp.bind(@host, @port_udp)
 
     while !@udp.closed?
-      line, client = @udp.recvfrom(8192)
+      begin
+        line, client = @udp.recvfrom(8192)
+      rescue => e
+        if !stop? # if we're shutting down there's no point in logging anything
+          @logger.error("Caught exception while reading from UDP socket", :exception => e.inspect)
+        end
+        next
+      end
 
       begin
         data = Gelfd::Parser.parse(line)

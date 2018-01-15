@@ -67,7 +67,7 @@ input plugins.
 The IP address or hostname to listen on.
 
 [id="plugins-{type}s-{plugin}-use_udp"]
-===== `use_udp` 
+===== `use_udp`
 
   * Value type is <<boolean,boolean>>
   * Default value is `true`
@@ -75,7 +75,7 @@ The IP address or hostname to listen on.
 Whether to listen for gelf messages sent over udp
 
 [id="plugins-{type}s-{plugin}-use_tcp"]
-===== `use_tcp` 
+===== `use_tcp`
 
   * Value type is <<boolean,boolean>>
   * Default value is `false`
@@ -92,20 +92,20 @@ The port to listen on. Remember that ports less than 1024 (privileged
 ports) may require root to use.
 port_tcp and port_udp can be used to set a specific port for each protocol.
 [id="plugins-{type}s-{plugin}-port_tcp"]
-===== `port_tcp` 
+===== `port_tcp`
 
   * Value type is <<number,number>>
   * There is no default value for this setting.
 
-Tcp port to listen on. Use port instead of this setting unless you need a different port for udp than tcp 
+Tcp port to listen on. Use port instead of this setting unless you need a different port for udp than tcp
 
 [id="plugins-{type}s-{plugin}-port_udp"]
-===== `port_udp` 
+===== `port_udp`
 
   * Value type is <<number,number>>
   * There is no default value for this setting.
 
-Udp port to listen on. Use port instead of this setting unless you need a different port for udp than tcp 
+Udp port to listen on. Use port instead of this setting unless you need a different port for udp than tcp
 
 [id="plugins-{type}s-{plugin}-remap"]
 ===== `remap` 
