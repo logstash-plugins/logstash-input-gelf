@@ -19,32 +19,31 @@ describe LogStash::Inputs::Gelf do
     it_behaves_like "an interruptible input plugin"
   end
 
-  it "reads chunked gelf messages " do
-    port = 12209
-    host = "127.0.0.1"
-    chunksize = 1420
-    gelfclient = GELF::Notifier.new(host, port, chunksize)
+  describe "chunked gelf messages" do
+    let(:port) { 12209 }
+    let(:host) { "127.0.0.1" }
+    let(:chunksize) { 1420 }
+    let(:gelfclient) { GELF::Notifier.new(host, port, chunksize) }
+    let(:large_random) { 2000.times.map{32 + rand(126 - 32)}.join("") }
 
-    conf = <<-CONFIG
-      input {
-        gelf {
-          port => "#{port}"
-          host => "#{host}"
-        }
-      }
-    CONFIG
+    let(:config) { { "port" => port, "host" => host } }
+    let(:queue) { Queue.new }
 
-    large_random = 2000.times.map{32 + rand(126 - 32)}.join("")
+    subject { described_class.new(config) }
 
-    messages = [
+    let(:messages) { [
       "hello",
       "world",
       large_random,
       "we survived gelf!"
-    ]
+    ] }
 
-    events = input(conf) do |pipeline, queue|
-      # send a first message until plugin is up and receives it
+    before(:each) do
+      subject.register
+      Thread.new { subject.run(queue) }
+    end
+
+    it "processes them" do
       while queue.size <= 0
         gelfclient.notify!("short_message" => "prime")
         sleep(0.1)
@@ -57,15 +56,15 @@ describe LogStash::Inputs::Gelf do
       end
 
       messages.each do |m|
-  	    gelfclient.notify!("short_message" => m)
+        gelfclient.notify!("short_message" => m)
       end
 
-      messages.map{queue.pop}
-    end
+      events = messages.map{queue.pop}
 
-    events.each_with_index do |e, i|
-      insist { e.get("message") } == messages[i]
-      insist { e.get("host") } == Socket.gethostname
+      events.each_with_index do |e, i|
+        expect(e.get("message")).to eq(messages[i])
+        expect(e.get("host")).to eq(Socket.gethostname)
+      end
     end
   end
 
