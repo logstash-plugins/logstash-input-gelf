@@ -1,3 +1,6 @@
+## 3.1.1
+  - Docs: Set the default_codec doc attribute.
+
 ## 3.1.0
   - Add support for listening on TCP socket
 
