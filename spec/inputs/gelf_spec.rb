@@ -68,6 +68,63 @@ describe LogStash::Inputs::Gelf do
     end
   end
 
+  it "reads nested gelf messages " do
+    port = 12210
+    host = "127.0.0.1"
+    chunksize = 1420
+    gelfclient = GELF::Notifier.new(host, port, chunksize)
+
+    conf = <<-CONFIG
+      input {
+        gelf {
+          port => "#{port}"
+          host => "#{host}"
+          nested_objects => true
+        }
+      }
+    CONFIG
+
+    result = input(conf) do |pipeline, queue|
+      # send a first message until plugin is up and receives it
+      while queue.size <= 0
+        gelfclient.notify!("short_message" => "prime")
+        sleep(0.1)
+      end
+      gelfclient.notify!("short_message" => "start")
+
+      e = queue.pop
+      while (e.get("message") != "start")
+        e = queue.pop
+      end
+
+      gelfclient.notify!({
+        "short_message" => "test nested",
+        "_toto.titi" => "objectValue",
+        "_foo.0" => "first",
+        "_foo.1" => "second",
+        "_ca.0.titi" => "1",
+        "_ca.1.titi" => "2",
+        "_empty." => "pouet",
+        "_not_an_array.0" => "bob",
+        "_not_an_array.1" => "alice",
+        "_not_an_array.length" => "carol",
+      })
+
+      queue.pop
+    end
+
+    insist { result.get("message") } == "test nested"
+    insist { result.get("toto")["titi"] } == "objectValue"
+    insist { result.get("foo") } == ["first", "second"]
+    insist { result.get("ca")[0]["titi"] } == "1"
+    insist { result.get("ca")[1]["titi"] } == "2"
+    insist { result.get("empty")[""]} == "pouet"
+    insist { result.get("not_an_array")["0"]} == "bob"
+    insist { result.get("not_an_array")["1"]} == "alice"
+    insist { result.get("not_an_array")["length"]} == "carol"
+    insist { result.get("host") } == Socket.gethostname
+  end
+
   context "timestamp coercion" do
     # these test private methods, this is advisable for now until we roll out this coercion in the Timestamp class
     # and remove this
