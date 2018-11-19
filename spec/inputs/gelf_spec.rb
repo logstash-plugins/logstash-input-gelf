@@ -148,38 +148,15 @@ describe LogStash::Inputs::Gelf do
   context "when an invalid JSON is fed to the listener" do
     subject { LogStash::Inputs::Gelf.new_event(message, "host") }
     let(:message) { "Invalid JSON message" }
+    context "JSON parser output" do
+      it { should be_a(LogStash::Event) }
 
-    if LogStash::Event.respond_to?(:from_json)
-      context "default :from_json parser output" do
-        it { should be_a(LogStash::Event) }
-
-        it "falls back to plain-text" do
-          expect(subject.get("message")).to eq(message)
-        end
-
-        it "tags message with _jsonparsefailure" do
-          expect(subject.get("tags")).to include("_jsonparsefailure")
-        end
-
-        it "tags message with _fromjsonparser" do
-          expect(subject.get("tags")).to include("_fromjsonparser")
-        end
+      it "falls back to plain-text" do
+        expect(subject.get("message")).to eq(message.inspect)
       end
-    else
-      context "legacy JSON parser output" do
-        it { should be_a(LogStash::Event) }
 
-        it "falls back to plain-text" do
-          expect(subject.get("message")).to eq(message)
-        end
-
-        it "tags message with _jsonparsefailure" do
-          expect(subject.get("tags")).to include("_jsonparsefailure")
-        end
-
-        it "tags message with _legacyjsonparser" do
-          expect(subject.get("tags")).to include("_legacyjsonparser")
-        end
+      it "tags message with _jsonparsefailure" do
+        expect(subject.get("tags")).to include("_jsonparsefailure")
       end
     end
   end
