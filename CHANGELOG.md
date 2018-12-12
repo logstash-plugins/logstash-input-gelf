@@ -1,3 +1,6 @@
+## 3.2.0
+  - Fixed shutdown handling, robustness in socket closing and restarting, json parsing, code DRYing and cleanups [62](https://github.com/logstash-plugins/logstash-input-gelf/pull/62)
+
 ## 3.1.1
   - Docs: Set the default_codec doc attribute.
 
