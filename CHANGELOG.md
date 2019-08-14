@@ -1,3 +1,6 @@
+## 3.3.0
+  - Updated library to gelfd2 [#48](https://github.com/logstash-plugins/logstash-input-gelf/pull/48)
+
 ## 3.2.0
   - Fixed shutdown handling, robustness in socket closing and restarting, json parsing, code DRYing and cleanups [62](https://github.com/logstash-plugins/logstash-input-gelf/pull/62)
 
