@@ -25,15 +25,7 @@ This input will read GELF messages as events over the network,
 making it a good choice if you already use Graylog2 today.
 
 The main use case for this input is to leverage existing GELF
-logging libraries such as the GELF log4j appender. A library used
-by this plugin has a bug which prevents it parsing uncompressed data.
-If you use the log4j appender you need to configure it like this to force
-gzip even for small messages:
-
-  <Socket name="logstash" protocol="udp" host="logstash.example.com" port="5001">
-     <GelfLayout compressionType="GZIP" compressionThreshold="1" />
-  </Socket>
-
+logging libraries such as the GELF log4j appender.
 
 
 [id="plugins-{type}s-{plugin}-options"]

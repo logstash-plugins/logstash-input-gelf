@@ -22,7 +22,7 @@ Gem::Specification.new do |s|
   # Gem dependencies
   s.add_runtime_dependency "logstash-core-plugin-api", ">= 1.60", "<= 2.99"
 
-  s.add_runtime_dependency "gelfd", ["0.2.0"]                 #(Apache 2.0 license)
+  s.add_runtime_dependency "gelfd2", ["0.4.1"]                 #(Apache 2.0 license)
   s.add_runtime_dependency 'logstash-codec-plain'
   s.add_runtime_dependency 'stud', '>= 0.0.22', '< 0.1.0'
 

@@ -12,16 +12,8 @@ require "json"
 # making it a good choice if you already use Graylog2 today.
 #
 # The main use case for this input is to leverage existing GELF
-# logging libraries such as the GELF log4j appender. A library used
-# by this plugin has a bug which prevents it parsing uncompressed data.
-# If you use the log4j appender you need to configure it like this to force
-# gzip even for small messages:
-#
-#   <Socket name="logstash" protocol="udp" host="logstash.example.com" port="5001">
-#      <GelfLayout compressionType="GZIP" compressionThreshold="1" />
-#   </Socket>
-#
-#
+# logging libraries such as the GELF log4j appender.
+
 class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   config_name "gelf"
 
@@ -73,7 +65,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   end
 
   def register
-    require 'gelfd'
+    require 'gelfd2'
     @port_tcp ||= @port
     @port_udp ||= @port
   end
@@ -202,7 +194,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       end
 
       begin
-        data = Gelfd::Parser.parse(line)
+        data = Gelfd2::Parser.parse(line)
       rescue => ex
         @logger.warn("Gelfd failed to parse a message skipping", :exception => ex, :backtrace => ex.backtrace)
         next
