@@ -185,7 +185,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
 
     while !stop?
       begin
-        line, client = @udp.recvfrom(8192)
+        line, client = @udp.recvfrom(65536)
       rescue => e
         if !stop?
           @logger.error("Caught exception while reading from UDP socket", :exception => e)
