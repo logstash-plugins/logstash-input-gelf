@@ -270,7 +270,10 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
      # Map all '_foo' fields to simply 'foo'
      event.to_hash.keys.each do |key|
        next unless key[0,1] == "_"
-       event.set(key[1..-1], event.get(key))
+       new_key = key[1..-1]
+       # https://github.com/logstash-plugins/logstash-input-gelf/issues/25
+       next if ['version', 'host', 'short_message', 'full_message', 'timestamp', 'level', 'facility', 'line', 'file'].include? new_key # GELF inner fields
+       event.set(new_key, event.get(key))
        event.remove(key)
      end
   end
