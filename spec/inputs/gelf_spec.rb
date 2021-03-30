@@ -69,6 +69,43 @@ describe LogStash::Inputs::Gelf do
     end
   end
 
+  describe "fixes bug sending _@timestamp as a bigdecimal" do
+    let(:port) { 12210 }
+    let(:host) { "127.0.0.1" }
+    let(:chunksize) { 1420 }
+    let(:gelfclient) { GELF::Notifier.new(host, port, chunksize) }
+
+    let(:config) { { "port" => port, "host" => host } }
+    let(:queue) { Queue.new }
+
+    subject { described_class.new(config) }
+
+    before(:each) do
+      subject.register
+      Thread.new { subject.run(queue) }
+    end
+
+    it "processes them" do
+      while queue.size <= 0
+        gelfclient.notify!("short_message" => "prime")
+        sleep(0.1)
+      end
+      gelfclient.notify!("short_message" => "start")
+
+      e = queue.pop
+      while (e.get("message") != "start")
+        e = queue.pop
+      end
+
+      gelfclient.notify!("short_message" => "msg1", "_@timestamp" => BigDecimal.new("946702800.1"))
+      gelfclient.notify!("short_message" => "msg2")
+
+      e = queue.pop
+      expect(e.get("message")).to eq("msg2")
+      expect(e.get("host")).to eq(Socket.gethostname)
+    end
+  end
+
   context "timestamp coercion" do
     # these test private methods, this is advisable for now until we roll out this coercion in the Timestamp class
     # and remove this
