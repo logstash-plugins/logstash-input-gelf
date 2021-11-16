@@ -69,8 +69,7 @@ describe LogStash::Inputs::Gelf do
     end
   end
 
-  describe "fixes bug sending _@timestamp as a bigdecimal" do
-    let(:port) { 12210 }
+  describe "sending _@timestamp as bigdecimal" do
     let(:host) { "127.0.0.1" }
     let(:chunksize) { 1420 }
     let(:gelfclient) { GELF::Notifier.new(host, port, chunksize) }
@@ -85,24 +84,55 @@ describe LogStash::Inputs::Gelf do
       Thread.new { subject.run(queue) }
     end
 
-    it "processes them" do
-      while queue.size <= 0
-        gelfclient.notify!("short_message" => "prime")
-        sleep(0.1)
-      end
-      gelfclient.notify!("short_message" => "start")
+    context "with valid value" do
+      let(:port) { 12210 }
 
-      e = queue.pop
-      while (e.get("message") != "start")
+      it "should be correctly processed" do
+        while queue.size <= 0
+          gelfclient.notify!("short_message" => "prime")
+          sleep(0.1)
+        end
+        gelfclient.notify!("short_message" => "start")
+
         e = queue.pop
+        while (e.get("message") != "start")
+          e = queue.pop
+        end
+
+        gelfclient.notify!("short_message" => "msg1", "_@timestamp" => BigDecimal.new("946702800.1"))
+        gelfclient.notify!("short_message" => "msg2")
+
+        e = queue.pop
+        expect(e.get("message")).to eq("msg1")
+        expect(e.timestamp.to_iso8601).to eq("2000-01-01T05:00:00.100Z")
+        expect(e.get("host")).to eq(Socket.gethostname)
+
+        e = queue.pop
+        expect(e.get("message")).to eq("msg2")
       end
+    end
 
-      gelfclient.notify!("short_message" => "msg1", "_@timestamp" => BigDecimal.new("946702800.1"))
-      gelfclient.notify!("short_message" => "msg2")
+    context "with invalid value" do
+      let(:port) { 12211 }
 
-      e = queue.pop
-      expect(e.get("message")).to eq("msg2")
-      expect(e.get("host")).to eq(Socket.gethostname)
+      it "must discard the event" do
+        while queue.size <= 0
+          gelfclient.notify!("short_message" => "prime")
+          sleep(0.1)
+        end
+        gelfclient.notify!("short_message" => "start")
+      
+        e = queue.pop
+        while (e.get("message") != "start")
+          e = queue.pop
+        end
+      
+        gelfclient.notify!("short_message" => "msg1", "_@timestamp" => "foo")
+        gelfclient.notify!("short_message" => "msg2")
+      
+        e = queue.pop
+        expect(e.get("message")).to eq("msg2")
+      end
     end
   end
 

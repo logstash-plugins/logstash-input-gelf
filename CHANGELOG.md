@@ -1,3 +1,6 @@
+## 3.3.1
+  - Fix: safely coerce the value of `_@timestamp` to don't crash the plugin [#67](https://github.com/logstash-plugins/logstash-input-gelf/pull/67)
+
 ## 3.3.0
   - Updated library to gelfd2 [#48](https://github.com/logstash-plugins/logstash-input-gelf/pull/48)
 

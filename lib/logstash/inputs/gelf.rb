@@ -209,9 +209,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       begin
         remap_gelf(event) if @remap
         strip_leading_underscore(event) if @strip_leading_underscore
-      rescue => e
+      rescue => ex
         if !stop?
-          @logger.error("Caught exception while striping leading underscores", :exception => e)
+          @logger.warn("Gelf (udp): striping leading underscores failed.", :exception => ex, :backtrace => ex.backtrace)
         end
         next
       end
@@ -276,11 +276,25 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   end
 
   def strip_leading_underscore(event)
-     # Map all '_foo' fields to simply 'foo'
-     event.to_hash.keys.each do |key|
-       next unless key[0,1] == "_"
-       event.set(key[1..-1], event.get(key))
-       event.remove(key)
-     end
+    # Map all '_foo' fields to simply 'foo'
+    event.to_hash.keys.each do |key|
+      next unless key[0,1] == "_"
+      new_key = key[1..-1]
+      value = event.get(key)
+      if new_key == LogStash::Event::TIMESTAMP
+        event.set(new_key, coerce_timestamp_carefully(value))
+      else
+        event.set(new_key, value)
+      end
+      event.remove(key)
+    end
+  end
+
+  def coerce_timestamp_carefully(value)
+    LogStash::Timestamp.at(value)
+  rescue TypeError => e
+    # maybe it's a BigDecimal?
+    coerced_value = BigDecimal.new(value)
+    LogStash::Timestamp.at(coerced_value.to_i, coerced_value.frac * 1000000)
   end
 end
