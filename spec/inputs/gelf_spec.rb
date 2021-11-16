@@ -142,7 +142,7 @@ describe LogStash::Inputs::Gelf do
 
     context "integer numeric values" do
       it "should coerce" do
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800).to_iso8601).to eq("2000-01-01T05:00:00.000Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800)).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.000Z")
         expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800).usec).to eq(0)
       end
     end
@@ -151,9 +151,9 @@ describe LogStash::Inputs::Gelf do
       # using explicit and certainly useless to_f here just to leave no doubt about the numeric type involved
 
       it "should coerce and preserve millisec precision in iso8601" do
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800.1.to_f).to_iso8601).to eq("2000-01-01T05:00:00.100Z")
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800.12.to_f).to_iso8601).to eq("2000-01-01T05:00:00.120Z")
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800.123.to_f).to_iso8601).to eq("2000-01-01T05:00:00.123Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(Rational(946702800.1).truncate(3)).to_iso8601).to eq("2000-01-01T05:00:00.100Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(Rational(946702800.12).truncate(3)).to_iso8601).to eq("2000-01-01T05:00:00.120Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(Rational(946702800.123).truncate(3)).to_iso8601).to eq("2000-01-01T05:00:00.123Z")
       end
 
       it "should coerce and preserve usec precision" do
@@ -196,7 +196,7 @@ describe LogStash::Inputs::Gelf do
 
     it "should coerce integer numeric json timestamp input" do
       event = LogStash::Inputs::Gelf.new_event("{\"timestamp\":946702800}", "dummy")
-      expect(event.timestamp.to_iso8601).to eq("2000-01-01T05:00:00.000Z")
+      expect(event.timestamp).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.000Z")
     end
 
     it "should coerce float numeric value and preserve milliseconds precision in iso8601" do
