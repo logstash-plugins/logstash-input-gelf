@@ -115,7 +115,7 @@ describe LogStash::Inputs::Gelf do
     context "with invalid value" do
       let(:port) { 12211 }
 
-      it "must discard the event" do
+      it "should create an error tagged event" do
         while queue.size <= 0
           gelfclient.notify!("short_message" => "prime")
           sleep(0.1)
@@ -130,6 +130,14 @@ describe LogStash::Inputs::Gelf do
         gelfclient.notify!("short_message" => "msg1", "_@timestamp" => "foo")
         gelfclient.notify!("short_message" => "msg2")
       
+        e = queue.pop
+        expect(e.get("message")).to eq("msg1")
+        event_tags = e.to_hash['tags']
+        expect(event_tags).to include("_gelf_move_field_failure")
+        error_reason = e.to_hash_with_metadata['@metadata']['error_reason']
+        expect(error_reason).to start_with("invalid value for BigDecimal")
+        expect(e.get("host")).to eq(Socket.gethostname)
+
         e = queue.pop
         expect(e.get("message")).to eq("msg2")
       end

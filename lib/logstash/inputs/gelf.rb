@@ -278,16 +278,19 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def strip_leading_underscore(event)
     # Map all '_foo' fields to simply 'foo'
     event.to_hash.keys.each do |key|
-      next unless key[0,1] == "_"
-      new_key = key[1..-1]
-      value = event.get(key)
-      if new_key == LogStash::Event::TIMESTAMP
-        event.set(new_key, coerce_timestamp_carefully(value))
-      else
-        event.set(new_key, value)
-      end
-      event.remove(key)
+      move_field(event, key, key.slice(1..-1)) if key.start_with?('_')
     end
+  end
+
+  def move_field(event, source_field, destination_field)
+    value = event.get(source_field)
+    value = coerce_timestamp_carefully(value) if destination_field == LogStash::Event::TIMESTAMP
+    event.set(destination_field, value)
+    event.remove(source_field)
+  rescue => e
+    @logger.warn("Failed to move field `#{source_field}` to `#{destination_field}`: #{e.message}")
+    event.tag("_gelf_move_field_failure")
+    event.set("[@metadata][error_reason]", e.message)
   end
 
   def coerce_timestamp_carefully(value)
