@@ -206,17 +206,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       event = self.class.new_event(data, client[3])
       next if event.nil?
 
-      begin
-        remap_gelf(event) if @remap
-        strip_leading_underscore(event) if @strip_leading_underscore
-      rescue => ex
-        if !stop?
-          @logger.warn("Gelf (udp): striping leading underscores failed.", :exception => ex, :backtrace => ex.backtrace)
-        end
-        next
-      end
-
-
+      remap_gelf(event) if @remap
+      strip_leading_underscore(event) if @strip_leading_underscore
       decorate(event)
 
       output_queue << event
