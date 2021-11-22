@@ -41,7 +41,13 @@ describe LogStash::Inputs::Gelf do
 
     before(:each) do
       subject.register
-      Thread.new { subject.run(queue) }
+      @runner = Thread.new { subject.run(queue) }
+    end
+
+    after(:each) do
+      subject.do_stop
+      @runner.kill
+      @runner.join
     end
 
     it "processes them" do
@@ -81,7 +87,13 @@ describe LogStash::Inputs::Gelf do
 
     before(:each) do
       subject.register
-      Thread.new { subject.run(queue) }
+      @runner = Thread.new { subject.run(queue) }
+    end
+
+    after(:each) do
+      subject.do_stop
+      @runner.kill
+      @runner.join
     end
 
     context "with valid value" do
