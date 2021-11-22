@@ -284,10 +284,8 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   end
 
   def coerce_timestamp_carefully(value)
+    # catch float numbers in 123.567 or 0.123567e3 forms
+    value = BigDecimal.new(value) if value.kind_of?(String) && value.match(/\A([0-9]+(\.[0-9]+)?)|(0\.[0-9]+e[0-9])\z/)
     LogStash::Timestamp.at(value)
-  rescue TypeError => e
-    # maybe it's a BigDecimal?
-    coerced_value = BigDecimal.new(value)
-    LogStash::Timestamp.at(coerced_value.to_i, coerced_value.frac * 1000000)
   end
 end
