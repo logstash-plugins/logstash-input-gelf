@@ -77,7 +77,7 @@ describe LogStash::Inputs::Gelf do
     let(:config) { { "port" => port, "host" => host } }
     let(:queue) { Queue.new }
 
-    subject { described_class.new(config) }
+    subject(:gelf_input) { described_class.new(config) }
 
     before(:each) do
       subject.register
