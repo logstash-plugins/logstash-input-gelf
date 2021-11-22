@@ -20,6 +20,19 @@ describe LogStash::Inputs::Gelf do
     it_behaves_like "an interruptible input plugin"
   end
 
+  def client_bootstrap(gelfclient, queue)
+    while queue.size <= 0
+      gelfclient.notify!("short_message" => "prime")
+      sleep(0.1)
+    end
+    gelfclient.notify!("short_message" => "start")
+
+    e = queue.pop
+    while (e.get("message") != "start")
+      e = queue.pop
+    end
+  end
+
   describe "chunked gelf messages" do
     let(:port) { 12209 }
     let(:host) { "127.0.0.1" }
@@ -42,6 +55,8 @@ describe LogStash::Inputs::Gelf do
     before(:each) do
       subject.register
       @runner = Thread.new { subject.run(queue) }
+
+      client_bootstrap(gelfclient, queue)
     end
 
     after(:each) do
@@ -51,17 +66,6 @@ describe LogStash::Inputs::Gelf do
     end
 
     it "processes them" do
-      while queue.size <= 0
-        gelfclient.notify!("short_message" => "prime")
-        sleep(0.1)
-      end
-      gelfclient.notify!("short_message" => "start")
-
-      e = queue.pop
-      while (e.get("message") != "start")
-        e = queue.pop
-      end
-
       messages.each do |m|
         gelfclient.notify!("short_message" => m)
       end
@@ -88,6 +92,8 @@ describe LogStash::Inputs::Gelf do
     before(:each) do
       subject.register
       @runner = Thread.new { subject.run(queue) }
+
+      client_bootstrap(gelfclient, queue)
     end
 
     after(:each) do
@@ -100,17 +106,6 @@ describe LogStash::Inputs::Gelf do
       let(:port) { 12210 }
 
       it "should be correctly processed" do
-        while queue.size <= 0
-          gelfclient.notify!("short_message" => "prime")
-          sleep(0.1)
-        end
-        gelfclient.notify!("short_message" => "start")
-
-        e = queue.pop
-        while (e.get("message") != "start")
-          e = queue.pop
-        end
-
         gelfclient.notify!("short_message" => "msg1", "_@timestamp" => BigDecimal.new("946702800.1"))
         gelfclient.notify!("short_message" => "msg2")
 
@@ -128,17 +123,6 @@ describe LogStash::Inputs::Gelf do
       let(:port) { 12211 }
 
       it "should create an error tagged event" do
-        while queue.size <= 0
-          gelfclient.notify!("short_message" => "prime")
-          sleep(0.1)
-        end
-        gelfclient.notify!("short_message" => "start")
-      
-        e = queue.pop
-        while (e.get("message") != "start")
-          e = queue.pop
-        end
-      
         gelfclient.notify!("short_message" => "msg1", "_@timestamp" => "foo")
         gelfclient.notify!("short_message" => "msg2")
       
