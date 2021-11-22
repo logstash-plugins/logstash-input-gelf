@@ -104,7 +104,7 @@ describe LogStash::Inputs::Gelf do
 
         e = queue.pop
         expect(e.get("message")).to eq("msg1")
-        expect(e.timestamp.to_iso8601).to eq("2000-01-01T05:00:00.100Z")
+        expect(e.timestamp).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.100Z")
         expect(e.get("host")).to eq(Socket.gethostname)
 
         e = queue.pop
