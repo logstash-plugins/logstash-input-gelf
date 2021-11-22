@@ -281,7 +281,6 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   rescue => e
     @logger.warn("Failed to move field `#{source_field}` to `#{destination_field}`: #{e.message}")
     event.tag("_gelf_move_field_failure")
-    event.set("[@metadata][error_reason]", e.message)
   end
 
   def coerce_timestamp_carefully(value)
