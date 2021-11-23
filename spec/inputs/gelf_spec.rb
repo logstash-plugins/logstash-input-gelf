@@ -129,7 +129,10 @@ describe LogStash::Inputs::Gelf do
         e = queue.pop
         expect(e.get("message")).to eq("msg1")
         event_tags = e.to_hash['tags']
-        expect(event_tags).to include("_gelf_move_field_failure")
+        aggregate_failures "tag and leave bad value in place" do
+          expect(event_tags).to include("_gelf_move_field_failure")
+          expect(e.get('_@timestamp')).to eq("foo")
+        end
         expect(e.get("host")).to eq(Socket.gethostname)
 
         e = queue.pop
