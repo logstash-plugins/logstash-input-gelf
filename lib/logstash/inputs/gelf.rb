@@ -241,8 +241,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   # @param timestamp [Numeric] a Numeric (integer, float or bigdecimal) timestampo representation
   # @return [LogStash::Timestamp] the proper LogStash::Timestamp representation
   def self.coerce_timestamp(timestamp)
-    # bug in JRuby prevents correctly parsing a BigDecimal fractional part, see https://github.com/elastic/logstash/issues/4565
-    timestamp.is_a?(BigDecimal) ? LogStash::Timestamp.at(timestamp.to_i, timestamp.frac * 1000000) : LogStash::Timestamp.at(timestamp)
+    # prevent artificial precision from being injected by floats
+    timestamp = timestamp.rationalize if timestamp.kind_of?(Float)
+    LogStash::Timestamp.at(timestamp)
   end
 
   def self.parse(json)
@@ -286,6 +287,6 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def coerce_timestamp_carefully(value)
     # catch float numbers in 123.567 or 0.123567e3 forms
     value = BigDecimal.new(value) if value.kind_of?(String) && value.match(/\A([0-9]+(\.[0-9]+)?)|(0\.[0-9]+e[0-9])\z/)
-    LogStash::Timestamp.at(value)
+    self.class.coerce_timestamp(value)
   end
 end
