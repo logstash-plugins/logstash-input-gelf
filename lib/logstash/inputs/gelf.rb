@@ -241,8 +241,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   # @param timestamp [Numeric] a Numeric (integer, float or bigdecimal) timestampo representation
   # @return [LogStash::Timestamp] the proper LogStash::Timestamp representation
   def self.coerce_timestamp(timestamp)
-    # bug in JRuby prevents correcly parsing a BigDecimal fractional part, see https://github.com/elastic/logstash/issues/4565
-    timestamp.is_a?(BigDecimal) ? LogStash::Timestamp.at(timestamp.to_i, timestamp.frac * 1000000) : LogStash::Timestamp.at(timestamp)
+    # prevent artificial precision from being injected by floats
+    timestamp = timestamp.rationalize if timestamp.kind_of?(Float)
+    LogStash::Timestamp.at(timestamp)
   end
 
   def self.parse(json)
@@ -267,11 +268,25 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   end
 
   def strip_leading_underscore(event)
-     # Map all '_foo' fields to simply 'foo'
-     event.to_hash.keys.each do |key|
-       next unless key[0,1] == "_"
-       event.set(key[1..-1], event.get(key))
-       event.remove(key)
-     end
+    # Map all '_foo' fields to simply 'foo'
+    event.to_hash.keys.each do |key|
+      move_field(event, key, key.slice(1..-1)) if key.start_with?('_')
+    end
+  end
+
+  def move_field(event, source_field, destination_field)
+    value = event.get(source_field)
+    value = coerce_timestamp_carefully(value) if destination_field == LogStash::Event::TIMESTAMP
+    event.set(destination_field, value)
+    event.remove(source_field)
+  rescue => e
+    @logger.warn("Failed to move field `#{source_field}` to `#{destination_field}`: #{e.message}")
+    event.tag("_gelf_move_field_failure")
+  end
+
+  def coerce_timestamp_carefully(value)
+    # catch float numbers in 123.567 or 0.123567e3 forms
+    value = BigDecimal(value) if value.kind_of?(String)
+    self.class.coerce_timestamp(value)
   end
 end

@@ -20,6 +20,19 @@ describe LogStash::Inputs::Gelf do
     it_behaves_like "an interruptible input plugin"
   end
 
+  def client_bootstrap(gelfclient, queue)
+    while queue.size <= 0
+      gelfclient.notify!("short_message" => "prime")
+      sleep(0.1)
+    end
+    gelfclient.notify!("short_message" => "start")
+
+    e = queue.pop
+    while (e.get("message") != "start")
+      e = queue.pop
+    end
+  end
+
   describe "chunked gelf messages" do
     let(:port) { 12209 }
     let(:host) { "127.0.0.1" }
@@ -41,21 +54,18 @@ describe LogStash::Inputs::Gelf do
 
     before(:each) do
       subject.register
-      Thread.new { subject.run(queue) }
+      @runner = Thread.new { subject.run(queue) }
+
+      client_bootstrap(gelfclient, queue)
+    end
+
+    after(:each) do
+      subject.do_stop
+      @runner.kill
+      @runner.join
     end
 
     it "processes them" do
-      while queue.size <= 0
-        gelfclient.notify!("short_message" => "prime")
-        sleep(0.1)
-      end
-      gelfclient.notify!("short_message" => "start")
-
-      e = queue.pop
-      while (e.get("message") != "start")
-        e = queue.pop
-      end
-
       messages.each do |m|
         gelfclient.notify!("short_message" => m)
       end
@@ -69,13 +79,75 @@ describe LogStash::Inputs::Gelf do
     end
   end
 
+  describe "sending _@timestamp as bigdecimal" do
+    let(:host) { "127.0.0.1" }
+    let(:chunksize) { 1420 }
+    let(:gelfclient) { GELF::Notifier.new(host, port, chunksize) }
+
+    let(:config) { { "port" => port, "host" => host } }
+    let(:queue) { Queue.new }
+
+    subject(:gelf_input) { described_class.new(config) }
+
+    before(:each) do
+      subject.register
+      @runner = Thread.new { subject.run(queue) }
+
+      client_bootstrap(gelfclient, queue)
+    end
+
+    after(:each) do
+      subject.do_stop
+      @runner.kill
+      @runner.join
+    end
+
+    context "with valid value" do
+      let(:port) { 12210 }
+
+      it "should be correctly processed" do
+        gelfclient.notify!("short_message" => "msg1", "_@timestamp" => BigDecimal.new("946702800.1"))
+        gelfclient.notify!("short_message" => "msg2")
+
+        e = queue.pop
+        expect(e.get("message")).to eq("msg1")
+        expect(e.timestamp).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.100Z")
+        expect(e.get("host")).to eq(Socket.gethostname)
+
+        e = queue.pop
+        expect(e.get("message")).to eq("msg2")
+      end
+    end
+
+    context "with invalid value" do
+      let(:port) { 12211 }
+
+      it "should create an error tagged event" do
+        gelfclient.notify!("short_message" => "msg1", "_@timestamp" => "foo")
+        gelfclient.notify!("short_message" => "msg2")
+      
+        e = queue.pop
+        expect(e.get("message")).to eq("msg1")
+        event_tags = e.to_hash['tags']
+        aggregate_failures "tag and leave bad value in place" do
+          expect(event_tags).to include("_gelf_move_field_failure")
+          expect(e.get('_@timestamp')).to eq("foo")
+        end
+        expect(e.get("host")).to eq(Socket.gethostname)
+
+        e = queue.pop
+        expect(e.get("message")).to eq("msg2")
+      end
+    end
+  end
+
   context "timestamp coercion" do
     # these test private methods, this is advisable for now until we roll out this coercion in the Timestamp class
     # and remove this
 
     context "integer numeric values" do
       it "should coerce" do
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800).to_iso8601).to eq("2000-01-01T05:00:00.000Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800)).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.000Z")
         expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800).usec).to eq(0)
       end
     end
@@ -84,9 +156,9 @@ describe LogStash::Inputs::Gelf do
       # using explicit and certainly useless to_f here just to leave no doubt about the numeric type involved
 
       it "should coerce and preserve millisec precision in iso8601" do
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800.1.to_f).to_iso8601).to eq("2000-01-01T05:00:00.100Z")
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800.12.to_f).to_iso8601).to eq("2000-01-01T05:00:00.120Z")
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800.123.to_f).to_iso8601).to eq("2000-01-01T05:00:00.123Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800.1.to_f)).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.100Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800.12.to_f)).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.120Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(946702800.123.to_f)).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.123Z")
       end
 
       it "should coerce and preserve usec precision" do
@@ -129,7 +201,7 @@ describe LogStash::Inputs::Gelf do
 
     it "should coerce integer numeric json timestamp input" do
       event = LogStash::Inputs::Gelf.new_event("{\"timestamp\":946702800}", "dummy")
-      expect(event.timestamp.to_iso8601).to eq("2000-01-01T05:00:00.000Z")
+      expect(event.timestamp).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.000Z")
     end
 
     it "should coerce float numeric value and preserve milliseconds precision in iso8601" do
