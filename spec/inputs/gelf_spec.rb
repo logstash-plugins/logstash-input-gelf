@@ -176,9 +176,9 @@ describe LogStash::Inputs::Gelf do
 
     context "BigDecimal numeric values" do
       it "should coerce and preserve millisec precision in iso8601" do
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.1")).to_iso8601).to eq("2000-01-01T05:00:00.100Z")
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.12")).to_iso8601).to eq("2000-01-01T05:00:00.120Z")
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.123")).to_iso8601).to eq("2000-01-01T05:00:00.123Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.1"))).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.100Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.12"))).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.120Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.123"))).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.123Z")
       end
 
       it "should coerce and preserve usec precision" do
@@ -206,7 +206,12 @@ describe LogStash::Inputs::Gelf do
 
     it "should coerce float numeric value and preserve milliseconds precision in iso8601" do
       event = LogStash::Inputs::Gelf.new_event("{\"timestamp\":946702800.123}", "dummy")
-      expect(event.timestamp.to_iso8601).to eq("2000-01-01T05:00:00.123Z")
+      expect(event.timestamp).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.123Z")
+    end
+
+    it "should coerce exponent-notation timestamps" do
+      event = LogStash::Inputs::Gelf.new_event("{\"timestamp\":1.660873462488E13}", "dummy")
+      expect(event.timestamp).to be_a_logstash_timestamp_equivalent_to("+528279-11-06T19:48:00Z")
     end
 
     it "should coerce float numeric value and preserve usec precision" do
