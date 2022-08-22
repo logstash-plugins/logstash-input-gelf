@@ -1,3 +1,6 @@
+## 3.3.2
+  - Fix: avoid panic when handling very-large exponent-notation `_@timestamp` values [#71](https://github.com/logstash-plugins/logstash-input-gelf/pull/71)
+
 ## 3.3.1
   - Fix: safely coerce the value of `_@timestamp` to avoid crashing the plugin [#67](https://github.com/logstash-plugins/logstash-input-gelf/pull/67)
 
