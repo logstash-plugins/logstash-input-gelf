@@ -196,19 +196,29 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       begin
         data = Gelfd2::Parser.parse(line)
       rescue => ex
-        @logger.warn("Gelfd failed to parse a message skipping", :exception => ex, :backtrace => ex.backtrace)
+        @logger.error("Gelfd failed to parse a message, skipping", :exception => ex, :backtrace => ex.backtrace, :line => line)
         next
       end
 
       # Gelfd parser outputs null if it received and cached a non-final chunk
       next if data.nil?
 
-      event = self.class.new_event(data, client[3])
-      next if event.nil?
+      begin
+        event = self.class.new_event(data, client[3])
+        next if event.nil?
+      rescue => ex
+        @logger.error("Could not create event, skipping", :exception => ex, :backtrace => ex.backtrace, :data => data)
+        next
+      end
 
-      remap_gelf(event) if @remap
-      strip_leading_underscore(event) if @strip_leading_underscore
-      decorate(event)
+      begin
+        remap_gelf(event) if @remap
+        strip_leading_underscore(event) if @strip_leading_underscore
+        decorate(event)
+      rescue => ex
+        @logger.error("Could not process event, skipping", :exception => ex, :backtrace => ex.backtrace, :event => event)
+        next
+      end
 
       output_queue << event
     end
