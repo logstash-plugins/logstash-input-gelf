@@ -238,4 +238,38 @@ describe LogStash::Inputs::Gelf do
       end
     end
   end
+
+  describe "when handling complex messages" do
+    let(:host) { "127.0.0.1" }
+    let(:port) { 12211 }
+    let(:chunksize) { 1420 }
+    let(:gelfclient) { GELF::Notifier.new(host, port, chunksize) }
+
+    let(:config) { { "port" => port, "host" => host } }
+    let(:queue) { Queue.new }
+
+    subject(:gelf_input) { described_class.new(config) }
+
+    before(:each) do
+      subject.register
+      @runner = Thread.new { subject.run(queue) }
+
+      client_bootstrap(gelfclient, queue)
+    end
+
+    after(:each) do
+      subject.do_stop
+      @runner.kill
+      @runner.join
+    end
+
+    it "should not overwrite inner gelf fields" do
+      message = "level field conflicting with internal GELF level field"
+      gelfclient.notify!("short_message" => message, "_level" => "foo")
+      e = queue.pop
+      expect(e.get("message")).to eq(message)
+      # TODO fixme, level should contain a number and _level should keep the leading underscore
+      expect(e.get("level")).to eq("foo")
+    end
+  end
 end
