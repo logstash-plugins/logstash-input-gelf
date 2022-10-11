@@ -47,6 +47,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   #
   config :strip_leading_underscore, :validate => :boolean, :default => true
 
+  # Whether or not to process dots in fields or leave them in place.
+  config :nested_objects, :validate => :boolean, :default => false
+
   RECONNECT_BACKOFF_SLEEP = 5
   TIMESTAMP_GELF_FIELD = "timestamp".freeze
   SOURCE_HOST_FIELD = "source_host".freeze
@@ -235,6 +238,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def process_event(event)
     remap_gelf(event) if @remap
     strip_leading_underscore(event) if @strip_leading_underscore
+    handle_nested_objects(event) if @nested_objects
     decorate(event)
   end
 
@@ -292,5 +296,88 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     # catch float numbers in 123.567 or 0.123567e3 forms
     value = BigDecimal(value) if value.kind_of?(String)
     self.class.coerce_timestamp(value)
+  end
+
+  def handle_nested_objects(event)
+    base_target = event.to_hash
+    base_target.keys.each do |key|
+      next unless key.include? ?.
+      value = event.get(key)
+      previous_key = nil
+      first_key = nil
+      target = base_target
+
+      keys = key.split(".")
+      if key =~ /\.$/
+        keys.push("");
+      end
+
+      keys.each do |sub_key|
+        if previous_key.nil?
+          first_key = sub_key
+        else
+          #skip first sub_key
+          unless array_or_hash_has_element?(target, previous_key)
+            if key_is_number(sub_key)
+              set_in_array_or_hash(target, previous_key, Array.new)
+            else
+              set_in_array_or_hash(target, previous_key, Hash.new)
+            end
+          end
+          new_target = get_in_array_or_hash(target, previous_key)
+          if new_target.is_a?(Array) and !key_is_number(sub_key)
+            # key is not an integer, so we need to convert array to hash
+            new_target = Hash[new_target.map.with_index { |x, i| [i, x] }]
+            set_in_array_or_hash(target, previous_key, new_target)
+          end
+          target = new_target
+        end
+        previous_key = sub_key
+      end
+      set_in_array_or_hash(target, previous_key, value)
+      event.remove(key)
+      event.set(first_key, base_target[first_key])
+    end
+  rescue => e
+    @logger.warn("Failed to parse nested objects: #{e.message}")
+    event.tag("_nested_objects_failure")
+  end
+
+  def key_is_number(key)
+    key =~ /^\d+$/
+  end
+
+  def get_in_array_or_hash(container, key)
+    if container.is_a?(Array)
+      container[Integer(key)]
+    elsif container.is_a?(Hash)
+      container[key]
+    else
+      raise "not an array or hash"
+    end
+  end
+
+  def set_in_array_or_hash(container, key, value)
+    if container.is_a?(Array)
+      container[Integer(key)] = value
+    elsif container.is_a?(Hash)
+      container[key] = value
+    else
+      raise "not an array or hash"
+    end
+  end
+
+  def array_or_hash_has_element?(container, key)
+    if container.is_a?(Array)
+      if !key_is_number(key)
+        return false
+      else
+        !container[Integer(key)].nil?
+      end
+    elsif container.is_a?(Hash)
+      container.key?(key)
+    else
+      raise "not an array or hash"
+    end
   end
 end

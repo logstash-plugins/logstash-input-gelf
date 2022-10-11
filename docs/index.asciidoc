@@ -127,6 +127,14 @@ as an "additional" field, beginning with an underscore.
 
 e.g. `\_foo` becomes `foo`
 
+[id="plugins-{type}s-{plugin}-nested_objects"]
+===== `nested_objects`
+
+  * Value type is <<boolean,boolean>>
+  * Default value is `false`
+
+Whether or not to process dots in fields or leave them in place.
+
 
 
 
