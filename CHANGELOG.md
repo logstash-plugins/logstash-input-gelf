@@ -1,3 +1,6 @@
+## next
+  - Fix: avoid GELF internal fields when removing leading underscores
+
 ## 3.3.2
   - Fix: avoid panic when handling very-large exponent-notation `_@timestamp` values [#71](https://github.com/logstash-plugins/logstash-input-gelf/pull/71)
 

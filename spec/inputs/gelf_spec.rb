@@ -268,8 +268,8 @@ describe LogStash::Inputs::Gelf do
       gelfclient.notify!("short_message" => message, "_level" => "foo")
       e = queue.pop
       expect(e.get("message")).to eq(message)
-      # TODO fixme, level should contain a number and _level should keep the leading underscore
-      expect(e.get("level")).to eq("foo")
+      expect(e.get("level")).to eq(1) # default
+      expect(e.get("_level")).to eq("foo")
     end
   end
 end
