@@ -149,9 +149,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
             event = self.class.new_event(data_in, client.peeraddr[3])
             next if event.nil?
 
-            remap_gelf(event) if @remap
-            strip_leading_underscore(event) if @strip_leading_underscore
-            decorate(event)
+            process_event(event)
             output_queue << event
           end
 
@@ -206,9 +204,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
       event = self.class.new_event(data, client[3])
       next if event.nil?
 
-      remap_gelf(event) if @remap
-      strip_leading_underscore(event) if @strip_leading_underscore
-      decorate(event)
+      process_event(event)
 
       output_queue << event
     end
@@ -234,6 +230,12 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     end
 
     event
+  end
+
+  def process_event(event)
+    remap_gelf(event) if @remap
+    strip_leading_underscore(event) if @strip_leading_underscore
+    decorate(event)
   end
 
   # transform a given timestamp value into a proper LogStash::Timestamp, preserving microsecond precision
