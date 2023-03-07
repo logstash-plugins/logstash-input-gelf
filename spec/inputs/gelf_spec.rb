@@ -238,4 +238,66 @@ describe LogStash::Inputs::Gelf do
       end
     end
   end
+
+  describe "when handling complex messages" do
+    let(:host) { "127.0.0.1" }
+    let(:port) { 12211 }
+    let(:chunksize) { 1420 }
+    let(:gelfclient) { GELF::Notifier.new(host, port, chunksize) }
+
+    let(:config) { { "port" => port, "host" => host, "nested_objects" => true } }
+    let(:queue) { Queue.new }
+
+    subject(:gelf_input) { described_class.new(config) }
+
+    before(:each) do
+      subject.register
+      @runner = Thread.new { subject.run(queue) }
+
+      client_bootstrap(gelfclient, queue)
+    end
+
+    after(:each) do
+      subject.do_stop
+      @runner.kill
+      @runner.join
+    end
+
+    it "should accept hash fields using dot notation" do
+      gelfclient.notify!("short_message" => "test nested hash",
+                         "_toto.titi" => "objectValue",
+                         "_empty." => "pouet",
+      )
+      e = queue.pop
+      expect(e.get("toto")["titi"]).to eq("objectValue")
+      expect(e.get("empty")[""]).to eq("pouet")
+    end
+
+    it "should accept array fields using dot notation" do
+      gelfclient.notify!("short_message" => "test nested array",
+                         "_foo.0" => "first",
+                         "_foo.1" => "second",
+                         "_ca.0.titi" => "1",
+                         "_ca.1.titi" => "2",
+      )
+      e = queue.pop
+      expect(e.get("foo")).to eq(["first", "second"])
+      expect(e.get("ca")[0]["titi"]).to eq("1")
+      expect(e.get("ca")[1]["titi"]).to eq("2")
+    end
+
+    it "should accept hash looking like an array" do
+      gelfclient.notify!("short_message" => "test nested array",
+                         "_not_an_array.0" => "bob",
+                         "_not_an_array.1" => "alice",
+                         "_not_an_array.length" => "carol",
+      )
+      e = queue.pop
+      value = e.get("not_an_array")
+      expect(value).to be_a(Hash)
+      expect(value["0"]).to eq("bob")
+      expect(value["1"]).to eq("alice")
+      expect(value["length"]).to eq("carol")
+    end
+  end
 end
