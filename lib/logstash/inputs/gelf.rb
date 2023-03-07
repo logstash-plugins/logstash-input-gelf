@@ -272,7 +272,10 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   def strip_leading_underscore(event)
     # Map all '_foo' fields to simply 'foo'
     event.to_hash.keys.each do |key|
-      move_field(event, key, key.slice(1..-1)) if key.start_with?('_')
+      next unless key.start_with?('_')
+      destination_field = key.slice(1..-1)
+      next if %w[version host short_message full_message timestamp level facility line file].include? destination_field # GELF inner fields
+      move_field(event, key, key.slice(1..-1))
     end
   end
 
