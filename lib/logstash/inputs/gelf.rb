@@ -181,6 +181,7 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     @logger.info("Starting gelf listener (udp) ...", :address => "#{@host}:#{@port_udp}")
 
     address_family, _, _ = Socket.getaddrinfo(@host, @port_udp)[0]
+    @udp.setsockopt(Socket::IPPROTO_IPV6, Socket::IPV6_V6ONLY, 0) if address_family == "AF_INET6"
     @udp = UDPSocket.new(Socket.const_get(address_family))
     @udp.bind(@host, @port_udp)
 
