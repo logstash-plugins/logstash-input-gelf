@@ -106,7 +106,7 @@ describe LogStash::Inputs::Gelf do
       let(:port) { 12210 }
 
       it "should be correctly processed" do
-        gelfclient.notify!("short_message" => "msg1", "_@timestamp" => BigDecimal.new("946702800.1"))
+        gelfclient.notify!("short_message" => "msg1", "_@timestamp" => BigDecimal("946702800.1"))
         gelfclient.notify!("short_message" => "msg2")
 
         e = queue.pop
@@ -176,21 +176,21 @@ describe LogStash::Inputs::Gelf do
 
     context "BigDecimal numeric values" do
       it "should coerce and preserve millisec precision in iso8601" do
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.1"))).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.100Z")
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.12"))).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.120Z")
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.123"))).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.123Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal("946702800.1"))).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.100Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal("946702800.12"))).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.120Z")
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal("946702800.123"))).to be_a_logstash_timestamp_equivalent_to("2000-01-01T05:00:00.123Z")
       end
 
       it "should coerce and preserve usec precision" do
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.1")).usec).to eq(100000)
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.12")).usec).to eq(120000)
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.123")).usec).to eq(123000)
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal("946702800.1")).usec).to eq(100000)
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal("946702800.12")).usec).to eq(120000)
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal("946702800.123")).usec).to eq(123000)
 
         # since Java Timestamp in 2.3+ relies on JodaTime which supports only millisec precision
         # the usec method will only be precise up to millisec.
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.1234")).usec).to be_within(1000).of(123400)
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.12345")).usec).to be_within(1000).of(123450)
-        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal.new("946702800.123456")).usec).to be_within(1000).of(123456)
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal("946702800.1234")).usec).to be_within(1000).of(123400)
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal("946702800.12345")).usec).to be_within(1000).of(123450)
+        expect(LogStash::Inputs::Gelf.coerce_timestamp(BigDecimal("946702800.123456")).usec).to be_within(1000).of(123456)
       end
     end
   end
