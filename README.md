@@ -1,6 +1,6 @@
 # Logstash Plugin
 
-[![Travis Build Status](https://travis-ci.com/logstash-plugins/logstash-input-gelf.svg)](https://travis-ci.com/logstash-plugins/logstash-input-gelf)
+[![Unit Tests](https://github.com/logstash-plugins/logstash-input-gelf/actions/workflows/unit-tests.yml/badge.svg?branch=main)](https://github.com/logstash-plugins/logstash-input-gelf/actions/workflows/unit-tests.yml)
 
 This is a plugin for [Logstash](https://github.com/elastic/logstash).
 
