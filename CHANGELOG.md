@@ -1,3 +1,7 @@
+## 3.5.0
+  - Add `receive_buffer_bytes` option to set the UDP socket receive buffer size (SO_RCVBUF), mirroring the option of the same name in logstash-input-udp. Without it the socket is stuck at the OS default and bursts are dropped silently by the kernel
+  - Increase the UDP read size from 8192 to 65536 bytes so unchunked datagrams larger than 8 KiB are no longer truncated
+
 ## 3.4.0
   - Updates the gelf dependency [#77](https://github.com/logstash-plugins/logstash-input-gelf/pull/77)
 

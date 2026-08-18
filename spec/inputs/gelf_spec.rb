@@ -79,6 +79,39 @@ describe LogStash::Inputs::Gelf do
     end
   end
 
+  describe "receive_buffer_bytes" do
+    let(:host) { "127.0.0.1" }
+    let(:port) { 12211 }
+    let(:chunksize) { 1420 }
+    let(:gelfclient) { GELF::Notifier.new(host, port, chunksize) }
+    # keep the request below the usual net.core.rmem_max default (~208 KiB)
+    # so the kernel does not cap it and the assertion holds on CI runners
+    let(:receive_buffer_bytes) { 128 * 1024 }
+
+    let(:config) { { "port" => port, "host" => host, "receive_buffer_bytes" => receive_buffer_bytes } }
+    let(:queue) { Queue.new }
+
+    subject { described_class.new(config) }
+
+    before(:each) do
+      subject.register
+      @runner = Thread.new { subject.run(queue) }
+
+      client_bootstrap(gelfclient, queue)
+    end
+
+    after(:each) do
+      subject.do_stop
+      @runner.kill
+      @runner.join
+    end
+
+    it "sets the socket receive buffer to at least the requested size" do
+      rcvbuf = subject.instance_variable_get(:@udp).getsockopt(Socket::SOL_SOCKET, Socket::SO_RCVBUF).unpack("i")[0]
+      expect(rcvbuf).to be >= receive_buffer_bytes
+    end
+  end
+
   describe "sending _@timestamp as bigdecimal" do
     let(:host) { "127.0.0.1" }
     let(:chunksize) { 1420 }
