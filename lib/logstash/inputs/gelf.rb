@@ -29,6 +29,12 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   config :port_tcp, :validate => :number
   config :port_udp, :validate => :number
 
+  # The socket receive buffer size in bytes for the UDP listener.
+  # If option is not set, the operating system default is used.
+  # The operating system will use the max allowed value if receive_buffer_bytes is larger than allowed.
+  # Consult your operating system documentation if you need to increase this max allowed value.
+  config :receive_buffer_bytes, :validate => :number
+
   # Whether or not to remap the GELF message fields to Logstash event fields or
   # leave them intact.
   #
@@ -48,6 +54,9 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
   config :strip_leading_underscore, :validate => :boolean, :default => true
 
   RECONNECT_BACKOFF_SLEEP = 5
+  # Maximum size of a UDP datagram; reading less than this truncates
+  # unchunked datagrams larger than the read size.
+  UDP_RECV_SIZE = 65536
   TIMESTAMP_GELF_FIELD = "timestamp".freeze
   SOURCE_HOST_FIELD = "source_host".freeze
   MESSAGE_FIELD = "message"
@@ -183,9 +192,19 @@ class LogStash::Inputs::Gelf < LogStash::Inputs::Base
     @udp = UDPSocket.new(Socket::AF_INET)
     @udp.bind(@host, @port_udp)
 
+    if @receive_buffer_bytes
+      @udp.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVBUF, @receive_buffer_bytes)
+      rcvbuf = @udp.getsockopt(Socket::SOL_SOCKET, Socket::SO_RCVBUF).unpack("i")[0]
+      # Linux reports back twice the requested size (kernel bookkeeping overhead),
+      # so only warn when the obtained value is lower than requested.
+      if rcvbuf < @receive_buffer_bytes
+        @logger.warn("Unable to set receive_buffer_bytes to desired size", :receive_buffer_bytes => @receive_buffer_bytes, :obtained => rcvbuf)
+      end
+    end
+
     while !stop?
       begin
-        line, client = @udp.recvfrom(8192)
+        line, client = @udp.recvfrom(UDP_RECV_SIZE)
       rescue => e
         if !stop?
           @logger.error("Caught exception while reading from UDP socket", :exception => e)
